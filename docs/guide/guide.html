@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Sumiveil 利用ガイド</title>
+<style>
+@page {
+  size: A4;
+  margin: 16mm 16mm 18mm 16mm;
+  @bottom-center { content: counter(page) " / " counter(pages); font: 9pt "Yu Gothic UI", "Meiryo", sans-serif; color: #777; }
+  @top-right { content: "Sumiveil 利用ガイド"; font: 8.5pt "Yu Gothic UI", "Meiryo", sans-serif; color: #999; }
+}
+@page :first { @bottom-center { content: none; } @top-right { content: none; } }
+:root {
+  --accent: #2563eb; --accent-soft: #eef3ff; --ink: #1b1b1b; --sub: #555; --line: #e3e3e3;
+  --warn: #b45309; --warn-soft: #fff7ed; --ok: #15803d; --ok-soft: #effaf2; --stop: #b91c1c; --stop-soft: #fef2f2;
+}
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: "Yu Gothic UI", "Yu Gothic", "Meiryo", sans-serif; font-size: 10.5pt; line-height: 1.75; color: var(--ink); margin: 0; }
+h1, h2, h3 { font-family: "Yu Gothic UI", "Yu Gothic", "Meiryo", sans-serif; font-weight: 700; line-height: 1.35; }
+h2 { font-size: 18pt; margin: 0 0 4mm; padding: 0 0 2mm; border-bottom: 3px solid var(--accent); break-after: avoid; }
+h2 .no { display: inline-block; min-width: 11mm; color: var(--accent); }
+h3 { font-size: 12.5pt; margin: 6mm 0 2mm; padding-left: 3mm; border-left: 4px solid var(--accent); break-after: avoid; }
+p { margin: 0 0 2.5mm; }
+section.chapter { break-before: page; }
+.lead { color: var(--sub); margin-bottom: 4mm; }
+figure { margin: 3mm 0 5mm; break-inside: avoid; text-align: center; }
+figure img { max-width: 100%; border: 1px solid #cfcfcf; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+figure.half img { max-width: 72%; }
+figure.small img { max-width: 58%; }
+figure.three-q img { max-width: 76%; }
+figcaption { font-size: 9pt; color: var(--sub); margin-top: 1.5mm; }
+figure.main { margin: 2mm 0 3mm; }
+figure.main img { max-width: 78%; }
+table.compact { font-size: 9pt; margin-top: 1mm; }
+table.compact th, table.compact td { padding: 1mm 2.2mm; }
+table.compact td.num span { width: 5.4mm; height: 5.4mm; line-height: 5.4mm; }
+ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 2mm 0 4mm; }
+ol.steps > li { counter-increment: step; position: relative; padding: 1mm 0 1mm 10mm; margin-bottom: 1.5mm; }
+ol.steps > li::before { content: counter(step); position: absolute; left: 0; top: 1.2mm; width: 6.5mm; height: 6.5mm; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: 9.5pt; text-align: center; line-height: 6.5mm; }
+.box { border-radius: 6px; padding: 3mm 4mm; margin: 3mm 0 4mm; break-inside: avoid; border: 1px solid; }
+.box .ttl { font-weight: 700; margin-bottom: 1mm; display: block; }
+.box.tip { background: var(--accent-soft); border-color: #c7d7fe; }
+.box.tip .ttl { color: var(--accent); }
+.box.warn { background: var(--warn-soft); border-color: #fed7aa; }
+.box.warn .ttl { color: var(--warn); }
+.box.stop { background: var(--stop-soft); border-color: #fecaca; }
+.box.stop .ttl { color: var(--stop); }
+.box.ok { background: var(--ok-soft); border-color: #bbf7d0; }
+.box.ok .ttl { color: var(--ok); }
+.box p:last-child, .box ul:last-child { margin-bottom: 0; }
+table { border-collapse: collapse; width: 100%; margin: 2mm 0 4mm; font-size: 9.5pt; break-inside: auto; }
+th, td { border: 1px solid var(--line); padding: 1.6mm 2.4mm; vertical-align: top; text-align: left; }
+th { background: #f4f6fa; font-weight: 700; }
+tr { break-inside: avoid; }
+td.num { text-align: center; width: 9mm; font-weight: 700; color: #fff; }
+td.num span { display: inline-block; width: 6mm; height: 6mm; line-height: 6mm; border-radius: 50%; background: #dc2626; }
+code, kbd, .mono { font-family: "Cascadia Mono", "Consolas", "BIZ UDGothic", "MS Gothic", monospace; font-size: 9pt; }
+kbd { display: inline-block; padding: 0 1.6mm; border: 1px solid #bbb; border-bottom-width: 2px; border-radius: 4px; background: #fafafa; line-height: 1.5; }
+code { background: #f3f4f6; padding: 0 1.2mm; border-radius: 3px; }
+pre { background: #1f2430; color: #e8eaf0; padding: 3mm 4mm; border-radius: 6px; font-family: "Cascadia Mono", "Consolas", monospace; font-size: 8.8pt; line-height: 1.55; white-space: pre-wrap; break-inside: avoid; margin: 2mm 0 4mm; }
+pre .c { color: #8b93a7; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; align-items: start; }
+.two figure { margin-top: 0; }
+ul { margin: 1mm 0 3mm; padding-left: 5mm; }
+li { margin-bottom: .8mm; }
+.tag { display: inline-block; padding: 0 2mm; border-radius: 10px; font-size: 8.5pt; font-weight: 700; }
+.tag.name { background: #fde2e7; color: #9f1239; }
+.tag.mail { background: #dbeafe; color: #1e40af; }
+.faq dt { font-weight: 700; margin-top: 3mm; padding-left: 7mm; position: relative; break-after: avoid; }
+.faq dt::before { content: "Q"; position: absolute; left: 0; color: var(--accent); font-weight: 800; }
+.faq dd { margin: 1mm 0 0; padding-left: 7mm; position: relative; break-inside: avoid; }
+.faq dd::before { content: "A"; position: absolute; left: 0; color: #dc2626; font-weight: 800; }
+
+/* 表紙 */
+.cover { height: 255mm; display: flex; flex-direction: column; justify-content: center; }
+.cover .logo { width: 30mm; height: 30mm; margin-bottom: 8mm; }
+.cover h1 { font-size: 34pt; margin: 0 0 2mm; letter-spacing: .02em; }
+.cover .sub { font-size: 15pt; color: var(--sub); margin-bottom: 14mm; }
+.cover .points { list-style: none; padding: 0; margin: 0 0 16mm; }
+.cover .points li { font-size: 11.5pt; margin-bottom: 3mm; padding-left: 7mm; position: relative; }
+.cover .points li::before { content: ""; position: absolute; left: 0; top: 2.4mm; width: 3mm; height: 3mm; border-radius: 50%; background: var(--accent); }
+.cover .meta { color: var(--sub); font-size: 9.5pt; border-top: 1px solid var(--line); padding-top: 4mm; }
+.toc { list-style: none; padding: 0; column-count: 2; column-gap: 10mm; }
+.toc li { padding: 1.2mm 0; border-bottom: 1px dotted #ccc; }
+.toc .n { display: inline-block; width: 8mm; color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- ─────────────── 表紙 ─────────────── -->
+<section class="cover">
+  <img class="logo" src="images/logo.png" alt="">
+  <h1>Sumiveil 利用ガイド</h1>
+  <div class="sub">個人情報・機密情報を、共有する前にワンステップで隠す</div>
+  <ul class="points">
+    <li>テキストを貼り付けるだけで、名前・電話番号・メールアドレス・パスワードなど 67 種類を自動で検出して置き換えます</li>
+    <li>左に元の文章、右にマスク後を並べて表示するので、何が隠されたか一目で確認できます</li>
+    <li>文字列を検索して、見つけた語をその場でマスク対象にできます。フォルダ内のファイルを横断して探すこともできます</li>
+    <li>処理はすべてこの PC の中だけで行い、インターネットには一切接続しません</li>
+  </ul>
+  <div class="meta">対象バージョン: Sumiveil 1.0.0 ／ 対象 OS: Windows 10 (1809 以降)・Windows 11 (64bit)</div>
+</section>
+
+<!-- ─────────────── 目次 ─────────────── -->
+<section class="chapter">
+  <h2>目次</h2>
+  <ol class="toc">
+    <li><span class="n">1</span>はじめに — 必ず守ってほしいこと</li>
+    <li><span class="n">2</span>インストール</li>
+    <li><span class="n">3</span>基本の使い方 (3 ステップ)</li>
+    <li><span class="n">4</span>結果の見方・直し方</li>
+    <li><span class="n">5</span>どのアプリからでもマスク (ホットキー)</li>
+    <li><span class="n">6</span>フォルダをまとめて処理・横断検索</li>
+    <li><span class="n">7</span>設定を変える</li>
+    <li><span class="n">8</span>チームで設定を共有する</li>
+    <li><span class="n">9</span>コマンドラインで使う (上級者向け)</li>
+    <li><span class="n">10</span>困ったとき (Q&amp;A)</li>
+    <li><span class="n">11</span>アンインストール</li>
+  </ol>
+
+  <h3>こんなときに使います</h3>
+  <table>
+    <tr><th style="width:38%">場面</th><th>Sumiveil でできること</th></tr>
+    <tr><td>生成 AI (ChatGPT・Claude など) に質問する前</td><td>メールや議事録の人名・連絡先を <code>&lt;NAME_1&gt;</code> のような記号に置き換え、文脈を保ったまま貼り付けられます。</td></tr>
+    <tr><td>ベンダーやサポート窓口にログを送る前</td><td>IP アドレス・ホスト名・ユーザー名・パスワード・API キーなどを隠します。フォルダ単位でもまとめて処理できます。</td></tr>
+    <tr><td>チケット・チャット・社外メールに貼る前</td><td>コピー → <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> → 貼り付け で、どのアプリでもその場で隠せます。</td></tr>
+  </table>
+</section>
+
+<!-- ─────────────── 1 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">1</span>はじめに — 必ず守ってほしいこと</h2>
+  <div class="box stop">
+    <span class="ttl">自動検出は 100% ではありません。共有する前に、必ず目で確認してください</span>
+    <p>Sumiveil は多くの情報を自動で見つけますが、珍しい書き方の氏名や、社内だけで通じる固有名詞 (案件名・製品のコードネーム など) は見逃すことがあります。右側のマスク後のテキストを<strong>最後に一度ざっと読んで</strong>から使ってください。見逃しやすい語は「キーワード辞書」(7 章) に登録しておくと、次からは確実に隠せます。</p>
+  </div>
+  <div class="box ok">
+    <span class="ttl">情報は外に出ません</span>
+    <p>Sumiveil はインターネットに接続しません。貼り付けた文章がどこかへ送られたり、記録として残ったりすることはありません (保存ボタンを押したときに、指定した場所へ保存するだけです)。</p>
+  </div>
+  <h3>用語</h3>
+  <table>
+    <tr><th style="width:30%">用語</th><th>意味</th></tr>
+    <tr><td>マスク</td><td>見せたくない部分を、別の文字 (例: <code>&lt;EMAIL_1&gt;</code>、<code>●●●●</code>) に置き換えること。</td></tr>
+    <tr><td>検出</td><td>Sumiveil が「これは隠すべき情報だ」と判断して見つけたもの。</td></tr>
+    <tr><td>プロファイル</td><td>用途ごとの設定のセット。「LLM 送信用」「ログ共有用」「厳格」などをワンクリックで切り替えます。</td></tr>
+    <tr><td>許可リスト</td><td>「これは隠さなくてよい」と登録した値 (例: 会社の代表メールアドレス)。</td></tr>
+    <tr><td>キーワード辞書</td><td>「これは必ず隠す」と登録した語 (例: 取引先名、案件のコードネーム)。</td></tr>
+  </table>
+</section>
+
+<!-- ─────────────── 2 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">2</span>インストール</h2>
+  <p class="lead">配布された <code>Sumiveil-Setup-1.0.0-x64.exe</code> をダブルクリックします。所要時間は 1 分ほどです。</p>
+
+  <div class="box warn">
+    <span class="ttl">よくあるつまずき ①: 「Windows によって PC が保護されました」と表示された</span>
+    <p>インターネットや共有フォルダから入手したアプリで表示される Windows の確認画面 (SmartScreen) です。配布元が社内の担当者であることを確認したうえで、<strong>「詳細情報」</strong>をクリック → <strong>「実行」</strong>を押してください。ボタンが表示されない場合は、会社の方針でブロックされています。情報システム担当者に相談してください。</p>
+  </div>
+
+  <h3>2-1. インストールモードを選ぶ</h3>
+  <div class="two">
+    <figure><img src="images/setup-mode.png" alt=""><figcaption>最初に表示される画面</figcaption></figure>
+    <div>
+      <p><strong>迷ったら「現在のユーザー用にインストール (推奨)」</strong>を選んでください。管理者権限は不要です。</p>
+      <p>「すべてのユーザー用」は、1 台の PC を複数人で使う場合向けです。管理者のパスワードを求められます。</p>
+      <p class="lead" style="font-size:9pt">※ インストーラーの色 (ライト/ダーク) は Windows の設定に合わせて変わります。</p>
+    </div>
+  </div>
+
+  <h3>2-2. 使用許諾・インストール先</h3>
+  <p>「同意する」を選んで「次へ」。インストール先は通常そのままで構いません。</p>
+
+  <h3>2-3. コンポーネントを選ぶ</h3>
+  <div class="two">
+    <figure><img src="images/setup-components.png" alt=""><figcaption>コンポーネントの選択</figcaption></figure>
+    <div>
+      <p>通常は<strong>そのまま「次へ」</strong>で十分です (本体とコマンドラインが入ります)。</p>
+      <p>「形態素解析辞書」(約 45 MB) を追加すると、<strong>「様」「さん」などが付いていない人名</strong>の検出精度が上がります。人名をしっかり隠したい場合はチェックを入れてください (入れた後に 7 章の設定で有効にします)。</p>
+    </div>
+  </div>
+
+  <h3>2-4. 追加タスクを選ぶ</h3>
+  <div class="two">
+    <figure><img src="images/setup-tasks.png" alt=""><figcaption>追加タスクの選択</figcaption></figure>
+    <div>
+      <ul>
+        <li><strong>デスクトップ上にアイコン</strong>: すぐ起動したい人向け。</li>
+        <li><strong>PATH に追加</strong>: コマンドラインで <code>sumiveil</code> を使う場合に必要 (9 章)。</li>
+        <li><strong>「送る」メニュー</strong>: ファイルを右クリック →「送る」→「Sumiveil」で開けます。</li>
+        <li><strong>右クリックメニュー</strong>: 右クリックに「Sumiveil で開く」を追加します。</li>
+        <li><strong>Windows 起動時にトレイで常駐</strong>: ホットキー (5 章) をいつでも使いたい人向け。</li>
+      </ul>
+    </div>
+  </div>
+  <p>「次へ」→「インストール」で完了です。スタートメニューの <strong>Sumiveil</strong> から起動できます。</p>
+  <p class="lead" style="font-size:9pt">※ 新しいバージョンに更新するときは、新しいインストーラーを実行するだけです。最初に「Sumiveil の更新」の画面が出て、インストール先・設定・前回選んだオプションが引き継がれます (使用許諾の画面は出ません)。</p>
+
+  <div class="box tip">
+    <span class="ttl">インストールできない PC の場合</span>
+    <p>ポータブル版 <code>Sumiveil-1.0.0-portable-x64.zip</code> を好きな場所に展開し、中の <code>sumiveil-gui.exe</code> を起動してください。設定は同じフォルダの <code>sumiveil.toml</code> に保存されるので、USB メモリなどで持ち運べます。</p>
+  </div>
+</section>
+
+<!-- ─────────────── 3 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">3</span>基本の使い方 (3 ステップ)</h2>
+  <ol class="steps">
+    <li><strong>貼り付ける</strong> — 隠したい文章をコピーして、Sumiveil の左側に <kbd>Ctrl</kbd>+<kbd>V</kbd> で貼り付けます。上の「貼り付け」ボタンや、ファイルをウィンドウにドラッグ＆ドロップしても OK です。</li>
+    <li><strong>確認する</strong> — 右側にマスク後の文章が自動で表示されます。色の付いた部分が置き換えた箇所です。見逃しがないか、ざっと目を通してください。</li>
+    <li><strong>使う</strong> — 右上の「結果をコピー」(<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>) を押して、送り先に貼り付けます。ファイルとして残す場合は、右隣の <strong>▾</strong> から「ファイルに保存」(<kbd>Ctrl</kbd>+<kbd>S</kbd>) を選びます。</li>
+  </ol>
+  <figure class="main"><img src="images/main-annotated.png" alt=""><figcaption>メイン画面 (番号は下の表に対応)</figcaption></figure>
+  <table class="compact">
+    <tr><th style="width:9mm"></th><th style="width:28%">場所</th><th>役割</th></tr>
+    <tr><td class="num"><span>1</span></td><td>開く・貼り付け</td><td>ファイルを開く / クリップボードの文章で置き換える</td></tr>
+    <tr><td class="num"><span>2</span></td><td>検索</td><td>文字列を探す (4-5)。<kbd>Ctrl</kbd>+<kbd>F</kbd> でも開けます</td></tr>
+    <tr><td class="num"><span>3</span></td><td>⋯ (その他)</td><td>クリア / マスクを再実行 / 検出一覧の表示 (幅が狭いときは隠れます)</td></tr>
+    <tr><td class="num"><span>4</span></td><td>プロファイル</td><td>用途別の設定に切り替え (7-5)。迷ったら「既定」</td></tr>
+    <tr><td class="num"><span>5</span></td><td>結果をコピー ▾</td><td>マスク後の文章をコピー。▾ から「ファイルに保存」「検出レポートを保存」</td></tr>
+    <tr><td class="num"><span>6</span></td><td>元のテキスト</td><td>入力欄。見つかった箇所が色付きになる</td></tr>
+    <tr><td class="num"><span>7</span></td><td>マスク後</td><td>置き換えた結果と検出件数。左右のスクロールは連動</td></tr>
+    <tr><td class="num"><span>8</span></td><td>検出一覧</td><td>見つかった項目 (1 行 1 件)。「種類」で絞り込み、クリックでその場所へ移動</td></tr>
+    <tr><td class="num"><span>9</span></td><td>ステータスバー</td><td>文字コード・行数・文字数・ファイル名・処理時間</td></tr>
+    <tr><td class="num"><span>10</span></td><td>メニュー</td><td>マスク / 一括処理 / 設定 (「情報」は設定の中)</td></tr>
+  </table>
+</section>
+
+<!-- ─────────────── 4 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">4</span>結果の見方・直し方</h2>
+
+  <h3>4-1. <code>&lt;NAME_1&gt;</code> などの意味</h3>
+  <p>既定では、見つけた情報を <strong>種類名＋番号</strong> に置き換えます。<strong>同じ値には必ず同じ番号</strong>が付くので、「誰が何をしたか」という文章の関係は読み取れたまま、中身だけが隠れます。生成 AI に質問するときにも、回答の中の <code>&lt;NAME_1&gt;</code> を自分で読み替えられます。</p>
+  <table>
+    <tr><th>元の文章</th><th>マスク後</th></tr>
+    <tr><td>田中様から 090-1234-5678 に連絡。田中様は明日来社予定。</td><td><span class="tag name">&lt;NAME_1&gt;</span>様から &lt;PHONE_1&gt; に連絡。<span class="tag name">&lt;NAME_1&gt;</span>様は明日来社予定。</td></tr>
+  </table>
+  <p>置き換え方は <code>[個人情報]</code> <code>●●●●</code> <code>***-****-5678</code> などに自由に変えられます (7-2)。</p>
+
+  <h3>4-2. 詳しく知りたいとき — マウスを乗せる</h3>
+  <figure class="half"><img src="images/hover.png" alt=""><figcaption>色の付いた部分にマウスを乗せると、種類・置き換え後・信頼度が表示されます</figcaption></figure>
+
+  <h3>4-3. 隠さなくてよいものまで隠された (誤検出)</h3>
+  <ol class="steps">
+    <li>右側の検出一覧で、その項目の<strong>チェックを外します</strong>。すぐに元の文字に戻ります。</li>
+    <li>今後も隠したくない値なら、一覧の下の「除外中」を開いて<strong>「許可リストへ」</strong>を押します。次回からも自動で除外されます。</li>
+  </ol>
+  <figure><img src="images/exclude.png" alt="" style="max-width:56%"><figcaption>「株式会社サンプル商事」のチェックを外した例。一覧の下の「除外中」から元に戻したり、許可リストに登録したりできます</figcaption></figure>
+
+  <div class="box warn">
+    <span class="ttl">よくあるつまずき ②: 隠したいのに隠されない (見逃し)</span>
+    <ul>
+      <li><strong>社名・製品名・案件名</strong>などは、7-3 の「キーワード辞書」に登録すると確実に隠せます。</li>
+      <li><strong>敬称の付いていない人名</strong>は、2-3 の「形態素解析辞書」を入れて 7-4 で有効にすると見つけやすくなります。</li>
+      <li>その場で隠したい語は、4-5 の<strong>検索</strong>で探して「マスク対象にする」を選ぶと、すぐに隠せます。</li>
+      <li>もっと広く隠したい場合は、右上のプロファイルを<strong>「strict (厳格)」</strong>に切り替えます (日付・金額・URL なども対象になります)。</li>
+    </ul>
+  </div>
+
+  <h3>4-4. ファイルを開く・保存する</h3>
+  <p>「開く」(<kbd>Ctrl</kbd>+<kbd>O</kbd>) またはウィンドウへのドラッグ＆ドロップで読み込みます。元のファイルが上書きされることはありません。</p>
+  <table class="compact">
+    <tr><th style="width:34%">開けるファイル</th><th>「保存」したときの形式</th></tr>
+    <tr><td>テキスト・ログ・CSV・JSON など</td><td>元と同じ形式・同じ文字コード (Shift_JIS・UTF-8 などは自動判別)</td></tr>
+    <tr><td>Word / Excel / PowerPoint</td><td>書式を保ったまま同じ形式。作成者などのプロパティは「消す・マスクする・そのまま残す」から選びます</td></tr>
+    <tr><td>メール (.eml)</td><td>マスクしたメール (.eml)。<strong>添付ファイルは取り除かれます</strong></td></tr>
+    <tr><td>PDF・Outlook のメール (.msg)</td><td>マスクしたテキスト (.txt)。PDF 自体は書き換えません</td></tr>
+  </table>
+  <p>Office 文書やメールを開くと、エディタの上に 1 行の<strong>状態バー</strong>が出ます (例:「Word 文書 · 読み取り専用 · プロパティ: 保存時に確認 ▾」)。「プロパティ ▾」を押すと、作成者などの記録内容と「消す / マスクする / そのまま残す」が表示されます。選ばずに保存した場合は、保存の前に確認されます。</p>
+
+  <h3>4-5. 文字列を検索する・見つけた語を隠す</h3>
+  <figure><img src="images/find.png" alt=""><figcaption>「検索」(<kbd>Ctrl</kbd>+<kbd>F</kbd>) で開く検索バー。一致した箇所が左右とも黄色になり、検出一覧も検索語で絞り込まれます</figcaption></figure>
+  <ul>
+    <li>検索欄に入力すると、一致した件数 (例: 1 / 4 件) が表示されます。<kbd>Enter</kbd> / <kbd>F3</kbd> で次、<kbd>Shift</kbd>+<kbd>Enter</kbd> で前へ移動し、<kbd>Esc</kbd> で閉じます。</li>
+    <li><strong>Aa</strong> で大文字と小文字を区別、<strong>.*</strong> で正規表現 (例: <code>PRJ-\d{4}</code>) を使えます。</li>
+    <li><strong>「マスク対象にする ▾」</strong>: 見つけた語を隠します。「今だけマスクする」は Sumiveil を閉じるまで、「キーワード辞書に登録する」は次回以降もずっと隠します (7-3)。</li>
+    <li>検出一覧は、既定で検索語に合わせて絞り込まれます (右の 🔗 ボタンで切り替え)。</li>
+  </ul>
+</section>
+
+<!-- ─────────────── 5 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">5</span>どのアプリからでもマスク (ホットキー)</h2>
+  <p class="lead">Sumiveil を開かなくても、メール・チャット・ブラウザなどで<strong>コピーした文章をその場でマスク</strong>できます。</p>
+  <ol class="steps">
+    <li>隠したい文章を選んで <kbd>Ctrl</kbd>+<kbd>C</kbd> でコピー</li>
+    <li><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> を押す (クリップボードの中身がマスク済みに置き換わります。件数が通知されます)</li>
+    <li>送り先で <kbd>Ctrl</kbd>+<kbd>V</kbd> で貼り付け</li>
+  </ol>
+  <div class="box warn">
+    <span class="ttl">よくあるつまずき ③: ホットキーを押しても何も起きない</span>
+    <ul>
+      <li><strong>Sumiveil が起動している必要があります。</strong>ウィンドウを閉じると Sumiveil は終了します。常に使いたい場合は、下の設定で「閉じるボタンでトレイに格納」をオンにするか、インストール時に「Windows の起動時にトレイで常駐」を選んでください。</li>
+      <li>タスクバー右端の <strong>^ (隠れているインジケーター)</strong> の中に Sumiveil のアイコンがあれば起動中です。アイコンをクリックすると画面が開きます。</li>
+      <li>ほかのアプリが同じキーを使っていると登録できません (画面右下にエラーが出ます)。設定の「キー操作とトレイ」→「グローバルホットキー」で「キーの組み合わせ」のボタンを押し、別の組み合わせ (例: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F12</kbd>) を押して変えてください。</li>
+      <li>コピーしたのが画像やファイルの場合は動きません (テキストのみ対象)。</li>
+    </ul>
+  </div>
+  <figure><img src="images/settings-keys.png" alt="" style="max-width:62%"><figcaption>設定 →「キー操作とトレイ」。アプリ内のショートカット・グローバルホットキー・タスクトレイの設定がまとまっています</figcaption></figure>
+</section>
+
+<!-- ─────────────── 6 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">6</span>フォルダをまとめて処理・横断検索</h2>
+  <p class="lead">左のメニューの「一括処理」で、フォルダ内のたくさんのファイルを一度にマスクしたり、まとめて検索したりできます。<strong>元のファイルは変更されません。</strong>上部の「マスク」「検索」で切り替えます。</p>
+
+  <h3>6-1. まとめてマスクする</h3>
+  <figure class="three-q"><img src="images/batch.png" alt=""><figcaption>左のメニュー →「一括処理」→「マスク」</figcaption></figure>
+  <ol class="steps">
+    <li><strong>対象のフォルダ</strong>を選びます (フォルダをウィンドウにドロップしても設定されます)。</li>
+    <li>対象にするファイルの種類は「対象のファイル」を開いて指定します (例: <code>*.log;*.txt</code>)。既定でテキスト・メール・Office 文書・PDF が対象なので、通常は開かなくて構いません。</li>
+    <li><strong>出力先</strong>を選びます。「別のフォルダ」をおすすめします (元と同じフォルダ構成で保存されます)。</li>
+    <li>文字コード・レポート (CSV / JSON)・連番の設定は「詳細」を開くと変えられます。「開始」を押し、終わったら「出力先を開く」で確認できます。</li>
+  </ol>
+  <div class="box tip">
+    <span class="ttl">ヒント</span>
+    <p>「詳細」の「ファイル間で連番を共通にする」がオンだと、複数のファイルに同じ人が出てきても、すべて同じ <code>&lt;NAME_1&gt;</code> になります。ファイルをまたいで関係を追いたいログ調査などで便利です。</p>
+  </div>
+
+  <h3>6-2. フォルダ内を横断して検索する</h3>
+  <figure class="three-q"><img src="images/batch-search.png" alt=""><figcaption>「一括処理」→「検索」。結果はファイルごとにまとまり、場所 (行・ページ・セルなど) と前後の文が表示されます</figcaption></figure>
+  <p>対象のフォルダを選び、検索する文字列を入れて「検索」(または <kbd>Enter</kbd>) を押します。結果の行を押すと、そのファイルがマスク画面で開き、一致した場所へ移動します。Office 文書・PDF・メールの中も検索できます。</p>
+</section>
+
+<!-- ─────────────── 7 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">7</span>設定を変える</h2>
+  <p class="lead">左のメニューの「設定」で変更します。変更は<strong>その場で保存・反映</strong>されます (保存ボタンがある画面を除く)。</p>
+  <table class="compact">
+    <tr><th style="width:26%">設定の項目</th><th>内容</th></tr>
+    <tr><td>全般</td><td>表示言語・テーマ (ライト/ダーク)・アクセントカラー・エディタ・描画方式</td></tr>
+    <tr><td>検出対象</td><td>検出の感度、人名・地名、項目ごとのオン/オフ (7-1・7-4)</td></tr>
+    <tr><td>マスクの表示</td><td>置き換え方 (7-2)</td></tr>
+    <tr><td>辞書とルール</td><td>キーワード辞書・許可リスト・カスタムルール (上部のタブで切り替え。7-3)</td></tr>
+    <tr><td>プロファイル</td><td>用途ごとの設定のセット (7-5)</td></tr>
+    <tr><td>ファイル</td><td>Office 文書のプロパティの扱い、設定ファイルの共有・既定に戻す (8 章)</td></tr>
+    <tr><td>キー操作とトレイ</td><td>ショートカットキー・グローバルホットキー・タスクトレイ (5 章)</td></tr>
+    <tr><td>情報</td><td>バージョン・利用ガイド・診断レポート (11 章)</td></tr>
+  </table>
+
+  <h3>7-1. 何を隠すかを選ぶ (検出対象)</h3>
+  <figure><img src="images/settings-detectors.png" alt=""><figcaption>上から検出の感度、人名・地名 (折りたたみ)、カテゴリごとの検出器。カテゴリを開くと項目ごとにオン/オフと置き換え方を指定できます</figcaption></figure>
+  <p>例: ホスト名を隠さなくてよい場合は「ネットワーク/IT」を開いて「ホスト名 (FQDN)」をオフにします。</p>
+
+  <h3>7-2. どう置き換えるかを選ぶ (マスクの表示)</h3>
+  <figure><img src="images/settings-display.png" alt=""><figcaption>入力欄の右の ∨ ボタンからよく使う形を選べます。下に置き換え例がその場で表示されます</figcaption></figure>
+  <table>
+    <tr><th style="width:36%">指定</th><th>結果の例 (元: 090-1234-5678)</th><th style="width:30%">向いている用途</th></tr>
+    <tr><td><code>&lt;{label}_{n}&gt;</code> (既定)</td><td><code>&lt;PHONE_1&gt;</code></td><td>生成 AI への送信</td></tr>
+    <tr><td><code>[{label_ja}]</code></td><td><code>[電話番号]</code></td><td>社外への文書</td></tr>
+    <tr><td><code>{fill:●}</code></td><td><code>●●●●●●●●●●●●●</code></td><td>見た目の長さを保つ</td></tr>
+    <tr><td><code>{shape:*:4}</code></td><td><code>***-****-5678</code></td><td>末尾だけ残して照合</td></tr>
+    <tr><td><code>[個人情報]</code> (固定の語)</td><td><code>[個人情報]</code></td><td>種類も伏せたい</td></tr>
+    <tr><td><code>{fake}</code></td><td><code>090-0000-0001</code></td><td>形式を保ったダミー値 (テストデータ作成)</td></tr>
+  </table>
+
+  <h3>7-3. 必ず隠したい語・隠さない値</h3>
+  <figure><img src="images/settings-rules.png" alt=""><figcaption>設定 →「辞書とルール」→「キーワード辞書」タブ (必ず隠す)。1 行に 1 語で登録し、「保存」を押す</figcaption></figure>
+  <figure><img src="images/settings-allowlist.png" alt="" style="max-width:62%"><figcaption>「許可リスト」タブ (隠さない)。値・ドメイン・正規表現で指定し、「保存」を押す</figcaption></figure>
+  <ul>
+    <li><strong>キーワード辞書</strong>: 取引先名・製品名・案件のコードネームなどを 1 行に 1 語で登録し、「保存」を押します。マスク画面の検索 (4-5) から登録することもできます。</li>
+    <li><strong>許可リスト</strong>: 会社の代表アドレスや自社ドメイン (例: <code>mycompany.co.jp</code>) など、隠す必要がないものを登録します。</li>
+    <li><strong>カスタムルール</strong>: 社員番号やチケット番号など、決まった形の値を正規表現で登録します (上級者向け)。</li>
+  </ul>
+
+  <h3>7-4. 人名・地名の検出を強める</h3>
+  <p>「検出対象」画面の「人名・地名」を開くと、形態素解析 (インストール時に「形態素解析辞書」を選んだ場合) や地名の検出をオンにできます。画面の上のスライダーで検出の感度も調整できます。</p>
+  <ul>
+    <li>ローマ字の日本人名 (Hanako Suzuki・YAMADA Taro・Tanaka-san など) は、姓と名が並んでいるか敬称が付いていれば検出します。</li>
+    <li>内蔵の辞書にない<strong>珍しい姓</strong> (小鳥遊・五百旗頭 など) も、「様」「さん」などの敬称や「担当:」などの項目名が付いているか、辞書にある名と並んでいれば検出します。敬称も名もない姓だけの記載は見逃すことがあるので、必要ならキーワード辞書に登録してください。</li>
+  </ul>
+
+  <h3>7-5. プロファイル (用途ごとの設定)</h3>
+  <p>切り替えはマスク画面の右上のプロファイル欄から。「設定」→「プロファイル」で自分用のプロファイルも作れます。<strong>プロファイル使用中に「検出対象」「マスクの表示」を変更すると、そのプロファイルにだけ保存されます。</strong></p>
+  <table>
+    <tr><th style="width:26%">プロファイル</th><th>内容</th></tr>
+    <tr><td>既定</td><td>標準の設定。まずはこれで使ってください。</td></tr>
+    <tr><td>llm</td><td>生成 AI への送信用。文脈を保つ連番タグ (<code>&lt;NAME_1&gt;</code>) で置き換えます。</td></tr>
+    <tr><td>log_share</td><td>ログ共有用。形式を保ったまま伏せ字にし、IP アドレスは文書用のダミー値にします。</td></tr>
+    <tr><td>strict</td><td>厳格。日付・金額・URL・地名なども対象にします。見逃しを減らしたいときに。</td></tr>
+  </table>
+</section>
+
+<!-- ─────────────── 8 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">8</span>チームで設定を共有する</h2>
+  <p class="lead">設定はすべて 1 つのテキストファイル (TOML 形式) に保存されます。ファイルを渡すだけで、同じ設定を使えます。</p>
+  <figure><img src="images/settings-files.png" alt=""><figcaption>設定 →「ファイル」。Office 文書のプロパティの扱いと、設定ファイルの操作</figcaption></figure>
+  <ul>
+    <li><strong>渡す側</strong>: 「エクスポート…」で設定ファイルを書き出し、チームの共有フォルダに置きます。</li>
+    <li><strong>受け取る側</strong>: 「インポート…」でそのファイルを選びます (それまでの設定は <code>.bak</code> として残ります)。</li>
+    <li>共通ルールを 1 か所で管理したい場合は、各自の設定ファイルの先頭に次の 1 行を書くと、共有フォルダのルールを毎回読み込みます (共有側を更新すれば全員に反映)。</li>
+  </ul>
+  <pre>include = ["\\\\fileserver\\share\\sumiveil-team.toml"]</pre>
+  <div class="box tip">
+    <span class="ttl">ヒント</span>
+    <p>設定ファイルをメモ帳などで直接編集しても、起動中の Sumiveil に自動で反映されます。各項目の意味は同梱の <code>docs\config.md</code> を参照してください。</p>
+  </div>
+</section>
+
+<!-- ─────────────── 9 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">9</span>コマンドラインで使う (上級者向け)</h2>
+  <p class="lead">インストール時に「PATH に追加」を選ぶと、コマンドプロンプトや PowerShell で <code>sumiveil</code> が使えます。<strong>インストール後に開いたウィンドウ</strong>で実行してください。</p>
+  <pre><span class="c"># ファイルをマスクして画面に表示</span>
+sumiveil report.txt
+
+<span class="c"># 別のファイルに保存</span>
+sumiveil report.txt -o report.masked.txt
+
+<span class="c"># ほかのコマンドの出力をそのままマスク (パイプ)</span>
+type app.log | sumiveil
+
+<span class="c"># 文字列を直接マスク</span>
+sumiveil -t "担当 田中様 090-1234-5678"
+
+<span class="c"># フォルダをまとめて処理し、CSV レポートも作る</span>
+sumiveil -r .\logs --out-dir .\masked --report .\masked\report.csv
+
+<span class="c"># 機密情報が含まれていないかチェック (見つかると終了コード 1)</span>
+sumiveil check -r .\src
+
+<span class="c"># 設定の変更</span>
+sumiveil config set detectors.hostname.enabled false</pre>
+  <p>すべてのオプションは <code>sumiveil --help</code>、詳しい説明は同梱の <code>docs\cli.md</code> にあります。</p>
+</section>
+
+<!-- ─────────────── 10 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">10</span>困ったとき (Q&amp;A)</h2>
+  <dl class="faq">
+    <dt>起動時に「Windows によって PC が保護されました」と出る</dt>
+    <dd>2 章の「よくあるつまずき ①」を参照してください。「詳細情報」→「実行」で起動できます。</dd>
+
+    <dt>隠したいものが隠されない / 隠さなくてよいものが隠される</dt>
+    <dd>4-3 を参照してください (見逃しはキーワード辞書・strict プロファイル、誤検出は許可リストで対処)。</dd>
+
+    <dt>ホットキー (Ctrl+Alt+M) が効かない</dt>
+    <dd>5 章の「よくあるつまずき ③」を参照してください (Sumiveil が起動している必要があります)。</dd>
+
+    <dt>ショートカットキーを変えたい</dt>
+    <dd>「設定」→「キー操作とトレイ」で、変えたい操作のボタンを押してから新しいキーを押します (<kbd>Esc</kbd> で取り消し)。</dd>
+
+    <dt>エラーが出た・動作がおかしい</dt>
+    <dd>内部エラーのときは自動で、それ以外は「設定」→「情報」の「診断レポートを作成」で<strong>診断レポート</strong>を作れます。送信はされないので、内容を確認してから GitHub の Issues に添付してください (11 章)。</dd>
+
+    <dt>ウィンドウが見つからない (起動しているはずなのに表示されない)</dt>
+    <dd>トレイに格納されています。タスクバー右端の ^ のアイコンか、スタートメニューから起動すると前面に出ます。</dd>
+
+    <dt>画面が真っ白・真っ黒のまま、または表示が崩れる</dt>
+    <dd>パソコンの描画機能 (GPU) との相性です。設定 →「全般」→「描画方式」を<strong>「ソフトウェア描画」</strong>または「DirectX」に変えて、Sumiveil を起動し直してください。画面が操作できない場合は、コマンドプロンプトで <code>sumiveil config set gui.renderer software</code> を実行するか、設定ファイルに <code>renderer = "software"</code> (<code>[gui]</code> の下) と書いてから起動し直します。</dd>
+
+    <dt>コマンドプロンプトで「sumiveil は認識されていません」と出る</dt>
+    <dd>インストール時に「PATH に追加」を選んだ場合は、<strong>コマンドプロンプトを開き直す</strong>と使えます。選んでいない場合は、インストーラーをもう一度実行して選んでください。</dd>
+
+    <dt>保存したファイルの文字が化ける</dt>
+    <dd>元のファイルと同じ文字コードで保存します (貼り付けた文章は UTF-8)。開くアプリ側の設定を確認してください。</dd>
+
+    <dt>とても大きなファイルを開くと色分けが表示されない</dt>
+    <dd>4 MB を超えるテキストは色分けを省略します (マスクは行われます)。大きなログは 6 章か 9 章の方法で。</dd>
+
+    <dt>設定を元に戻したい</dt>
+    <dd>設定 →「ファイル」→「既定に戻す…」を押します。それまでの設定は <code>.bak</code> ファイルとして残ります。</dd>
+
+    <dt>社外の人に何か送信していないか心配</dt>
+    <dd>Sumiveil はネットワークに接続しません。入力した文章は、保存したとき以外どこにも書き出されません。</dd>
+  </dl>
+</section>
+
+<!-- ─────────────── 11 ─────────────── -->
+<section class="chapter">
+  <h2><span class="no">11</span>アンインストール</h2>
+  <ol class="steps">
+    <li>Windows の「設定」→「アプリ」→「インストールされているアプリ」を開きます。</li>
+    <li>「Sumiveil」の「…」→「アンインストール」を選びます (Sumiveil が起動中でも、自動で終了してから削除します)。</li>
+    <li>最後に「設定ファイルも削除しますか?」と聞かれます。<strong>もう使わない場合は「はい」</strong>、再インストールする予定がある場合や設定をとっておきたい場合は「いいえ」を選びます。</li>
+  </ol>
+  <p>PATH やショートカット、右クリックメニューなど、インストール時に追加したものはすべて元に戻ります。</p>
+
+  <h3>お問い合わせの前に確認してほしいこと</h3>
+  <p>「設定」→「情報」で、バージョン番号と設定ファイルの場所を確認できます。GitHub の Issues (https://github.com/sumiveil-dev/sumiveil/issues) で報告するときは、バージョンを添えてください。<strong>マスク前の文章や設定ファイルに機密情報が含まれる場合は、そのまま送らないでください。</strong></p>
+  <figure class="three-q"><img src="images/settings-about.png" alt=""><figcaption>設定 →「情報」(バージョン・設定ファイルの場所・診断レポート)</figcaption></figure>
+  <h3>診断レポート</h3>
+  <p>「問題が起きたとき」の<strong>「診断レポートを作成」</strong>を押すと、バージョン・Windows のバージョン・描画方式・設定のオン/オフや件数をまとめたテキストファイルを作り、エクスプローラーで表示します。内部エラーが起きたときは自動で作られます。</p>
+  <ul>
+    <li><strong>自動では送信されません。</strong>メモ帳などで内容を確認してから、Issues に添付してください。</li>
+    <li>入力した文章・ファイルの内容・辞書やルールに登録した語は含まれません (件数だけ)。パスに含まれるユーザー名は <code>&lt;ユーザー名&gt;</code> などに置き換えます。</li>
+    <li>保存先は設定ファイルと同じ場所の <code>diagnostics</code> フォルダです (インストール版は <code>%APPDATA%\Sumiveil\diagnostics</code>)。コマンドラインでは <code>sumiveil diagnose</code> で作れます。</li>
+  </ul>
+</section>
+
+</body>
+</html>

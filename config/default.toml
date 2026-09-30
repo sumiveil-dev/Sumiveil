@@ -1,0 +1,193 @@
+# ============================================================================
+#  Sumiveil 設定ファイル
+# ----------------------------------------------------------------------------
+#  書いていない項目は既定値が使われます。このファイルをチームで共有したり、
+#  include で共通ルールを読み込んだりできます。
+#
+#  既定の場所 : %APPDATA%\Sumiveil\config.toml
+#  ポータブル : sumiveil.exe と同じフォルダに sumiveil.toml を置くとそちらを使用
+#  その他     : 環境変数 SUMIVEIL_CONFIG、または --config <path> で指定
+#  確認       : sumiveil config path
+# ============================================================================
+
+# 共通ルールファイルを先に読み込む (相対パスはこのファイルのフォルダ基準、%VAR% 展開可)
+# include = ["\\\\fileserver\\share\\sumiveil-team.toml"]
+
+[general]
+language = "auto"          # "auto" | "ja" | "en"
+theme = "system"           # "light" | "dark" | "system" (OS に追従)
+active_profile = "default" # 使用するプロファイル ([profiles.*] の名前、または "default")
+
+[masking]
+# マスク後の表示テンプレート (検出器・カテゴリごとに上書き可)
+#   {label} {label_ja} {category} {category_ja} {id} {n}=同じ値には同じ連番 {len}=元の文字数
+#   {hash:8} {prefix:3} {suffix:4} {fill:●} {fill:*:8} {shape:*} {shape:*:4} {fake}
+#   例: "<{label}_{n}>" → <EMAIL_1>   "[{label_ja}]" → [メールアドレス]   "{fill:●}" → ●●●●
+template = "<{label}_{n}>"
+min_confidence = 0.5       # この信頼度未満の検出は無視 (0.0〜1.0)
+hash_salt = ""             # {hash} / {fake} 用の秘密のソルト (チームで揃えると同じ値が同じハッシュに)
+
+# ---------------------------------------------------------------------------
+# カテゴリ単位の有効/無効・テンプレート
+#   contact personal jp_id intl_id finance network secret location organization custom
+# ---------------------------------------------------------------------------
+# [categories.network]
+# enabled = true
+# template = "[{label}]"
+
+# ---------------------------------------------------------------------------
+# 検出器ごとの設定 (一覧: sumiveil list-detectors)
+#   enabled / template / min_confidence / priority
+# ---------------------------------------------------------------------------
+# [detectors.hostname]
+# enabled = false
+#
+# [detectors.credit_card]
+# template = "****-****-****-{suffix:4}"
+#
+# [detectors.date]
+# enabled = true
+
+# ---------------------------------------------------------------------------
+# 人名検出
+# ---------------------------------------------------------------------------
+[names]
+propagate = true             # 確度の高い人名が見つかったら文中の同じ名前もマスク
+use_dictionary = true        # 内蔵の姓名辞書で敬称なしの人名も検出
+dictionary_threshold = 0.6   # 辞書層の採用しきい値
+use_morphology = false       # 形態素解析で文脈から人名・地名を検出 (追加の辞書が必要: インストーラーの「完全インストール」)
+morphology_dict = ""         # 辞書フォルダ (空なら exe フォルダの dict\ipadic などを自動で探す)
+
+# ---------------------------------------------------------------------------
+# マスク対象外 (許可リスト)
+# ---------------------------------------------------------------------------
+[allowlist]
+values = []                  # 完全一致 (大文字小文字無視)
+patterns = []                # 正規表現 (値全体に一致)
+domains = ["example.com", "example.org", "example.net", "example.jp", "localhost"]
+
+# ---------------------------------------------------------------------------
+# キーワード辞書 (必ずマスクする語。社名・顧客名・コードネームなど)
+# ---------------------------------------------------------------------------
+# [[keywords]]
+# label = "CLIENT"
+# name = "取引先"
+# words = ["アクメ商事", "Acme Corp"]
+# case_sensitive = false
+# whole_word = false
+
+# ---------------------------------------------------------------------------
+# カスタム正規表現ルール (先読み/後読みも使用可)
+#   名前付きグループ v があればその部分だけマスク
+# ---------------------------------------------------------------------------
+# [[custom_rules]]
+# id = "project_code"
+# name = "案件コード"
+# label = "PROJECT"
+# pattern = 'PRJ-\d{4}'
+# priority = 70
+# template = "<{label}_{n}>"
+
+# ---------------------------------------------------------------------------
+# GUI
+# ---------------------------------------------------------------------------
+[gui]
+font_size = 14.0
+auto_mask = true             # 入力と同時にマスク
+debounce_ms = 250
+sync_scroll = true
+word_wrap = false
+show_line_numbers = true
+show_detection_panel = true
+tray_enabled = true          # タスクトレイにアイコンを表示
+close_to_tray = false        # ウィンドウを閉じてもトレイに常駐
+start_in_tray = false
+hotkey_enabled = true        # グローバルホットキーでクリップボードをその場でマスク
+hotkey = "Ctrl+Alt+M"
+hotkey_notify = true
+accent_color = "auto"        # アクセントカラー: auto (Windows の設定に従う) または "#RRGGBB"
+renderer = "auto"            # 描画方式: auto | opengl | directx | software (表示がおかしい・真っ白なときは software。再起動後に反映)
+
+# アプリ内のショートカットキー ("Ctrl+Shift+C" の形式。修飾キーは Ctrl / Shift / Alt。"" で無効)
+# Ctrl か Alt を含めてください (F1〜F24 は単独でも可)。Ctrl+C / V / X / A / Z / Y は入力欄で使うため割り当てられません
+[gui.shortcuts]
+open = "Ctrl+O"              # ファイルを開く
+paste = "Ctrl+Shift+V"       # クリップボードから貼り付け (置き換え)
+copy = "Ctrl+Shift+C"        # マスク結果をコピー
+save = "Ctrl+S"              # マスク結果を保存
+run = "F5"                   # マスクを再実行
+settings = "Ctrl+,"          # 設定を開く
+find = "Ctrl+F"              # 検索バーを開く
+
+# ---------------------------------------------------------------------------
+# フォルダ一括処理
+# ---------------------------------------------------------------------------
+[batch]
+include = [
+  "*.txt", "*.log", "*.csv", "*.tsv", "*.json", "*.jsonl", "*.ndjson", "*.xml", "*.yaml", "*.yml", "*.har",
+  "*.md", "*.markdown", "*.mdx", "*.rst", "*.adoc", "*.html", "*.htm",
+  "*.ini", "*.conf", "*.cfg", "*.config", "*.properties", "*.toml", "*.env", "*.sql",
+  "*.py", "*.js", "*.ts", "*.java", "*.cs", "*.go", "*.rb", "*.php", "*.ps1", "*.sh", "*.bat",
+  "*.eml", "*.msg", "*.docx", "*.xlsx", "*.pptx", "*.pdf",
+]
+exclude = []
+suffix = ".masked"           # 出力先フォルダ未指定時: report.txt → report.masked.txt (PDF / .msg は report.masked.txt)
+output_encoding = "same"     # テキストファイルの出力: "same" | "utf-8" | "utf-8-bom" | "shift_jis" | "utf-16le"
+
+# ---------------------------------------------------------------------------
+# メール・Office 文書・PDF
+#   .eml は解読してマスクした .eml を、.docx / .xlsx / .pptx は書式を保ったまま書き出します。
+#   PDF / .msg はマスクしたテキスト (.txt) として書き出します。
+# ---------------------------------------------------------------------------
+[files]
+# Office 文書のプロパティ (作成者・最終更新者・会社名・コメントの作成者など) の扱い
+#   "ask"   … その都度確認する (コマンドラインでは確認できないため "clear" として扱う)
+#   "mask"  … 本文と同じ方法でマスクする (敬称のない名前などは見逃すことがある)
+#   "clear" … 値を空にする
+#   "keep"  … そのまま残す
+properties = "ask"
+
+# ============================================================================
+#  プロファイル (基本設定の上に重ねる差分)
+# ============================================================================
+[profiles.llm]
+description = "LLM・チャットAIへの送信用 (文脈を保つ連番タグ)"
+[profiles.llm.masking]
+template = "<{label}_{n}>"
+[profiles.llm.detectors.date]
+enabled = false
+
+[profiles.log_share]
+description = "ログ共有用 (IP・ホスト・パス・シークレット中心、形式を保つ)"
+[profiles.log_share.masking]
+template = "{shape:x}"
+[profiles.log_share.categories.personal]
+enabled = true
+[profiles.log_share.detectors.uuid]
+enabled = true
+[profiles.log_share.detectors.ipv4]
+template = "{fake}"
+[profiles.log_share.detectors.ipv6]
+template = "{fake}"
+
+[profiles.strict]
+description = "厳格 (日付・金額・URL・地名・高エントロピー文字列も対象)"
+[profiles.strict.masking]
+template = "[{label_ja}]"
+min_confidence = 0.4
+[profiles.strict.names]
+dictionary_threshold = 0.5
+[profiles.strict.detectors.date]
+enabled = true
+[profiles.strict.detectors.age]
+enabled = true
+[profiles.strict.detectors.money]
+enabled = true
+[profiles.strict.detectors.url]
+enabled = true
+[profiles.strict.detectors.uuid]
+enabled = true
+[profiles.strict.detectors.place_name]
+enabled = true
+[profiles.strict.detectors.high_entropy]
+enabled = true

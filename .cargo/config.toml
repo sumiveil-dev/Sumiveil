@@ -1,0 +1,4 @@
+# C ランタイムを静的リンクし、Visual C++ 再頒布可能パッケージ (vcruntime140.dll) が
+# 入っていない PC (クリーンな Windows、Windows サンドボックス等) でもそのまま起動できるようにする。
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

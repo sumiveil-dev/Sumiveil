@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = ["crates/sumiveil-core", "crates/sumiveil-cli", "crates/sumiveil-gui"]
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+authors = ["sumiveil-dev"]
+repository = "https://github.com/sumiveil-dev/sumiveil"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.dev.package."*"]
+opt-level = 2

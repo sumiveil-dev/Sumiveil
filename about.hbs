@@ -1,0 +1,32 @@
+Sumiveil - Third-party notices
+==============================
+
+Sumiveil includes the following third-party software. Their licenses are reproduced below.
+
+Built-in dictionaries:
+  - mecab-ipadic (name and place entries) - see IPADIC-LICENSE.txt
+  - US Census Bureau name data (1990 first names, 2010 surnames) - public domain
+
+Source code of MPL-2.0 components (unmodified):
+  - option-ext: https://crates.io/crates/option-ext , https://github.com/soc/option-ext
+
+The installer is built with Inno Setup (https://jrsoftware.org/), Copyright (C) 1997-2026 Jordan Russell and Martijn Laan.
+
+All icons and artwork in Sumiveil are original works of the Sumiveil developers.
+Other company and product names mentioned in Sumiveil and its documentation are trademarks or registered trademarks of their respective owners.
+
+{{#each overview}}
+{{{name}}} ({{count}})
+{{/each}}
+
+{{#each licenses}}
+------------------------------------------------------------------------------
+{{{name}}}
+Used by:
+{{#each used_by}}
+  - {{{crate.name}}} {{{crate.version}}}
+{{/each}}
+
+{{{text}}}
+
+{{/each}}

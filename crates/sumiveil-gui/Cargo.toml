@@ -1,0 +1,31 @@
+[package]
+name = "sumiveil-gui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow = "1.0.104"
+arboard = { version = "3.6.1", default-features = false }
+eframe = { version = "0.36.2", default-features = false, features = ["accesskit", "glow", "wgpu_no_default_features"] }
+global-hotkey = "0.8.0"
+sumiveil-core = { path = "../sumiveil-core" }
+memmap2 = "0.9.11"
+notify = "8.2.0"
+regex = "1.13.1"
+rfd = "0.17.2"
+serde_json = "1.0.151"
+tray-icon = "0.25.1"
+wgpu = { version = "30", default-features = false, features = ["dx12", "std", "wgsl"] }
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging", "Win32_System_Registry", "Win32_UI_Shell", "Win32_System_Threading", "Win32_Security", "UI_Notifications", "Data_Xml_Dom", "Win32_UI_HiDpi"] }
+
+# 利用ガイドの画像をアプリ自身が作る機能 (撮影用のビルドだけで使う。配布版には入れない)
+png = { version = "0.18", optional = true }
+
+[features]
+guide-capture = ["dep:png", "windows/Win32_Graphics_Gdi", "windows/Win32_Storage_Xps"]
+
+[build-dependencies]
+winresource = "0.1.31"

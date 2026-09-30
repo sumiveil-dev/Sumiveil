@@ -1,0 +1,13 @@
+# 既定は自動判定 (リポジトリ内は LF)
+* text=auto
+# Windows のスクリプトは CRLF で取り出す (PowerShell 5.1 / Inno Setup / cmd)
+*.ps1 text eol=crlf
+*.iss text eol=crlf
+*.cmd text eol=crlf
+# バイナリ
+*.png binary
+*.pdf binary
+*.ico binary
+*.bmp binary
+*.zip binary
+*.exe binary

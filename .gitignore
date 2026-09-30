@@ -1,0 +1,23 @@
+# ビルド成果物・ローカルの依存物 (scripts\env.ps1 / setup-tools.ps1 で再作成できる)
+/target/
+/.cargo-home/
+/tools/
+/dist/
+# 開発時にダウンロードする元データ (scripts\gen-dict.ps1 / build-morph-dict.ps1 で再取得)
+/data/raw/
+# 公開リポジトリはビルドに必要な最小構成にする (以下は手元だけで使う)
+/.claude/
+# 生成物 (package.ps1 / build-guide.ps1 が作る)
+/docs/Sumiveil-UserGuide-ja.pdf
+# ガイド画像の撮影・サンドボックス検証・辞書の再生成 (元データや VM が必要で、ビルドには不要)
+/scripts/sandbox-test.ps1
+/scripts/sandbox/
+/scripts/gen-dict.ps1
+/scripts/guide-kit/
+/scripts/import-guide.ps1
+/tests/
+/crates/sumiveil-core/examples/bench.rs
+/crates/sumiveil-gui/examples/icon-sheet.rs
+# 旧版 (MaskIt) の配布物・ツール・撮影スクリプトのアーカイブ (手元の保管用)
+/archive/
+/crates/sumiveil-core/examples/eval.rs
