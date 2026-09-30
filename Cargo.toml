@@ -7,7 +7,7 @@ version = "1.0.0"
 edition = "2021"
 license = "MIT"
 authors = ["sumiveil-dev"]
-repository = "https://github.com/sumiveil-dev/sumiveil"
+repository = "https://github.com/sumiveil-dev/Sumiveil"
 
 [profile.release]
 opt-level = 3

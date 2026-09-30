@@ -17,7 +17,7 @@
 
 - 個人が趣味で開発している小規模なプロジェクトです。質問への回答や不具合の修正には時間がかかることがあります。あらかじめご了承ください。
 - 開発には、Anthropic の AI コーディング支援ツール「Claude Code」を併用しています。
-- 不具合の報告や要望は [Issues](https://github.com/sumiveil-dev/sumiveil/issues) へお寄せください。
+- 不具合の報告や要望は [Issues](https://github.com/sumiveil-dev/Sumiveil/issues) へお寄せください。
   セキュリティ上の問題など、公開の場に書きにくい内容は、リポジトリの「Security」タブから非公開で報告できます。
   Issues には、個人情報や機密情報を含む文章をそのまま貼り付けないでください。
 
@@ -37,7 +37,7 @@ About this project:
 
 - This is a small hobby project maintained by one person. Replies and fixes may take a while. Thank you for your patience.
 - Development uses Claude Code, an AI coding assistant by Anthropic.
-- Please report bugs and requests via [Issues](https://github.com/sumiveil-dev/sumiveil/issues).
+- Please report bugs and requests via [Issues](https://github.com/sumiveil-dev/Sumiveil/issues).
   For security problems or anything you would rather not post publicly, use private reporting from the repository's "Security" tab.
   Please do not paste text that contains personal or confidential data into an issue.
 
@@ -65,7 +65,7 @@ About this project:
 
 ## インストール
 
-[GitHub の Releases](https://github.com/sumiveil-dev/sumiveil/releases) から `Sumiveil-Setup-<version>-x64.exe` をダウンロードして実行します。
+[GitHub の Releases](https://github.com/sumiveil-dev/Sumiveil/releases) から `Sumiveil-Setup-<version>-x64.exe` をダウンロードして実行します。
 
 - 起動時に **「現在のユーザーのみ」(管理者権限不要) / 「すべてのユーザー」** を選べます。
 - オプション: デスクトップのショートカット、**PATH への追加** (コマンドラインで `sumiveil` が使える)、「送る」メニュー、右クリックメニュー、Windows 起動時にトレイ常駐。
@@ -150,7 +150,7 @@ domains = ["example.com", "mycompany.co.jp"]
 
 - 自動検出は完全ではありません。社外に出す前に、左右比較画面で結果を必ず目視確認してください。
 - 検出の感度は「最低信頼度」やプロファイルで調整できます。見逃しが多い場合は `strict` プロファイルを試してください。
-- 問題が起きたときは「設定」→「情報」の「診断レポートを作成」で作ったファイル (設定ファイルと同じ場所の `diagnostics` フォルダ) を、内容を確認してから [GitHub の Issues](https://github.com/sumiveil-dev/sumiveil/issues) に添付してください (個人情報が含まれていないことを必ず確認してください)。Sumiveil が自動で送信することはありません。
+- 問題が起きたときは「設定」→「情報」の「診断レポートを作成」で作ったファイル (設定ファイルと同じ場所の `diagnostics` フォルダ) を、内容を確認してから [GitHub の Issues](https://github.com/sumiveil-dev/Sumiveil/issues) に添付してください (個人情報が含まれていないことを必ず確認してください)。Sumiveil が自動で送信することはありません。
 
 ## ビルド (開発者向け)
 
