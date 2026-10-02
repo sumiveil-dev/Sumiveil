@@ -88,8 +88,10 @@ New-Item -ItemType Directory -Force $stage | Out-Null
 Copy-Item "target\release\sumiveil.exe", "target\release\sumiveil-gui.exe", "README.md", "LICENSE.txt", "crates\sumiveil-core\data\IPADIC-LICENSE.txt" $stage
 if (Test-Path "THIRD-PARTY-NOTICES.txt") { Copy-Item "THIRD-PARTY-NOTICES.txt" $stage }
 Copy-Item -Recurse "docs" (Join-Path $stage "docs")
-# exe と同じフォルダの sumiveil.toml を使うポータブルモード
-Copy-Item "config\default.toml" (Join-Path $stage "sumiveil.toml")
+# ポータブルモードの目印。設定ファイル (sumiveil.toml) 自体は入れない: 新しい版を同じフォルダに上書き展開したときに、
+# 利用者の設定が既定値で上書きされないように (初めて設定を変えたときに sumiveil.toml が作られる)
+[IO.File]::WriteAllText((Join-Path $stage "sumiveil.portable"), "このファイルがあると、設定を同じフォルダの sumiveil.toml に保存します (ポータブルモード)。`r`nWith this file, settings are stored in sumiveil.toml in this folder (portable mode).`r`n", (New-Object Text.UTF8Encoding($true)))
+Copy-Item "config\default.toml" (Join-Path $stage "sumiveil.default.toml")
 New-Item -ItemType Directory -Force "dist" | Out-Null
 $zip = "dist\Sumiveil-$version-portable-x64.zip"
 Remove-Item $zip -ErrorAction SilentlyContinue

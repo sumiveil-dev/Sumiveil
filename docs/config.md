@@ -7,7 +7,7 @@
 
 1. `--config <path>` (CLI)
 2. 環境変数 `SUMIVEIL_CONFIG`
-3. `sumiveil.exe` / `sumiveil-gui.exe` と同じフォルダの `sumiveil.toml` (ポータブルモード)
+3. `sumiveil.exe` / `sumiveil-gui.exe` と同じフォルダの `sumiveil.toml` (ポータブルモード。目印の `sumiveil.portable` だけがあるときも、ここに作る)
 4. `%APPDATA%\Sumiveil\config.toml`
 
 GUI・CLI・直接編集のどれで変更しても、実行中の GUI に自動で反映されます。GUI や `sumiveil config set` で変更してもコメントや書式は保持されます。

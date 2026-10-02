@@ -5,7 +5,7 @@
 #  include で共通ルールを読み込んだりできます。
 #
 #  既定の場所 : %APPDATA%\Sumiveil\config.toml
-#  ポータブル : sumiveil.exe と同じフォルダに sumiveil.toml を置くとそちらを使用
+#  ポータブル : sumiveil.exe と同じフォルダに sumiveil.toml (または目印の sumiveil.portable) があるとそちらを使用
 #  その他     : 環境変数 SUMIVEIL_CONFIG、または --config <path> で指定
 #  確認       : sumiveil config path
 # ============================================================================

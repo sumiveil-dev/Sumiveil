@@ -77,7 +77,7 @@ About this project:
 - インストーラーは Windows のライト/ダーク設定に合わせた配色で表示されます。
 - サイレントインストール: `Sumiveil-Setup-x.y.z-x64.exe /VERYSILENT /CURRENTUSER` (全ユーザーは `/ALLUSERS`)、タスク指定は `/TASKS="desktopicon,addtopath"`。
 
-インストールせずに使う場合は `Sumiveil-<version>-portable-x64.zip` を展開してください (形態素解析辞書は `Sumiveil-<version>-morphology-dict.zip` を同じフォルダに重ねて展開します)。`sumiveil.exe` と同じフォルダに `sumiveil.toml` があると、その設定ファイルを使うポータブルモードになります。
+インストールせずに使う場合は `Sumiveil-<version>-portable-x64.zip` を展開してください (形態素解析辞書は `Sumiveil-<version>-morphology-dict.zip` を同じフォルダに重ねて展開します)。同じフォルダに `sumiveil.portable` (または設定ファイル `sumiveil.toml`) があると、設定をそのフォルダの `sumiveil.toml` に保存するポータブルモードになります。ZIP には設定ファイルを入れていないので、新しい版を同じフォルダに上書き展開しても設定は消えません (コメント付きの既定の設定は `sumiveil.default.toml` にあります)。
 
 > コード署名していないため、初回起動時に Microsoft Defender SmartScreen の警告が表示されることがあります。配布元 (GitHub の Releases) を確認したうえで「詳細情報」→「実行」で起動してください。社内で配布する場合は、社内のコード署名証明書で署名することもできます。
 

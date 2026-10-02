@@ -1,6 +1,6 @@
 //! 設定ファイル (TOML) の読み込み・合成・編集。
 //!
-//! - 場所の優先順位: 明示指定 > 環境変数 `SUMIVEIL_CONFIG` > exe と同じフォルダの `sumiveil.toml` (ポータブル) > `%APPDATA%\Sumiveil\config.toml`
+//! - 場所の優先順位: 明示指定 > 環境変数 `SUMIVEIL_CONFIG` > exe と同じフォルダの `sumiveil.toml` (ポータブル。目印の `sumiveil.portable` があるときも) > `%APPDATA%\Sumiveil\config.toml`
 //! - `include = ["team.toml"]` で別ファイルを先に読み込んで合成できる (相対パスは設定ファイルのフォルダ基準)
 //! - `[profiles.<名前>]` は基本設定の上に重ねる差分。`general.active_profile` または `--profile` で選択
 
@@ -12,6 +12,9 @@ use serde::{Deserialize, Serialize};
 pub const DEFAULT_TOML: &str = include_str!("../../../config/default.toml");
 pub const ENV_CONFIG: &str = "SUMIVEIL_CONFIG";
 pub const PORTABLE_FILE: &str = "sumiveil.toml";
+/// ポータブル版の目印 (中身は使わない)。これか `sumiveil.toml` が exe の横にあればポータブルモード。
+/// 配布 ZIP には設定ファイルそのものを入れず、この目印だけを入れる (新しい版を上書き展開しても設定が消えないように)。
+pub const PORTABLE_MARKER: &str = "sumiveil.portable";
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
@@ -515,7 +518,7 @@ pub fn resolve_config_path(explicit: Option<&Path>) -> PathBuf {
         }
     }
     if let Some(p) = portable_config_path() {
-        if p.exists() {
+        if p.exists() || p.with_file_name(PORTABLE_MARKER).exists() {
             return p;
         }
     }

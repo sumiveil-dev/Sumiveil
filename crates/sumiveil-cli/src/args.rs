@@ -27,7 +27,7 @@ pub struct Cli {
 
 #[derive(Args, Debug, Clone)]
 pub struct GlobalOpts {
-    /// Config file to use (default: SUMIVEIL_CONFIG, portable sumiveil.toml, or %APPDATA%\Sumiveil\config.toml)
+    /// Config file to use (default: SUMIVEIL_CONFIG, portable sumiveil.toml (or sumiveil.portable marker), or %APPDATA%\Sumiveil\config.toml)
     #[arg(long, global = true, value_name = "PATH")]
     pub config: Option<PathBuf>,
 
@@ -262,7 +262,7 @@ pub enum ConfigCmd {
 
 /// ヘルプの日本語化 (引数 ID → 説明)。
 const JA_ARGS: &[(&str, &str)] = &[
-    ("config", "使用する設定ファイル (既定: SUMIVEIL_CONFIG → exe 横の sumiveil.toml → %APPDATA%\\Sumiveil\\config.toml)"),
+    ("config", "使用する設定ファイル (既定: SUMIVEIL_CONFIG → exe 横の sumiveil.toml (目印の sumiveil.portable があるときも) → %APPDATA%\\Sumiveil\\config.toml)"),
     ("profile", "使用するプロファイル (例: llm, log_share, strict)"),
     ("color", "色付けの有無"),
     ("quiet", "標準エラーへの警告・集計を出さない"),
