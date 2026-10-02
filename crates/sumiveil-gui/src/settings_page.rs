@@ -707,7 +707,7 @@ fn names(app: &mut App, ui: &mut Ui) {
         let found = sumiveil_core::morph::find_dictionary(&n.morphology_dict);
         let status = match &found {
             Some(p) => format!("{}: {}", app.t("辞書", "Dictionary"), p.display()),
-            None => app.t("辞書が見つかりません。インストーラーで「形態素解析辞書」を選ぶと使えます。", "Dictionary not found. Select \"Morphology dictionary\" in the installer to enable this.").to_string(),
+            None => app.t("辞書が見つかりません。インストーラーで「形態素解析辞書」を選ぶか、ポータブル版は morphology-dict.zip を同じフォルダに展開すると使えます。", "Dictionary not found. Select \"Morphology dictionary\" in the installer, or extract morphology-dict.zip into the portable folder.").to_string(),
         };
         let mut v = n.use_morphology;
         let label = app.t("形態素解析を使う (追加の辞書が必要)", "Use morphological analysis (extra dictionary)");
@@ -1235,7 +1235,7 @@ fn file(app: &mut App, ui: &mut Ui) {
     let ja = app.lang.is_ja();
     let path = app.cfg_path.clone();
     widgets::card(ui, |ui| {
-        let r = ui.label(RichText::new(path.display().to_string()).monospace());
+        let r = ui.label(RichText::new(win::external_path(&path).display().to_string()).monospace());
         crate::guide_mark!(ui.ctx(), "files-cfg-path", r.rect);
         widgets::secondary(ui, if path.exists() {
             app.t("このファイルを直接編集しても自動で反映されます。チームでの共有には include やエクスポート/インポートを使えます。", "Edits to this file are applied automatically. Use include or export/import to share settings.")
@@ -1251,7 +1251,7 @@ fn file(app: &mut App, ui: &mut Ui) {
                     }
                     let _ = std::fs::write(&path, DEFAULT_TOML);
                 }
-                let _ = std::process::Command::new("notepad.exe").arg(&path).spawn();
+                let _ = std::process::Command::new("notepad.exe").arg(win::external_path(&path)).spawn();
             }
             if widgets::icon_button(ui, Icon::Folder, if ja { "フォルダを開く" } else { "Open folder" }).clicked() {
                 if path.exists() {

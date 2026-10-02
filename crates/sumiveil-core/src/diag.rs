@@ -1,4 +1,4 @@
-//! 診断レポート (問題が起きたときに、利用者が自分で担当者へ送るためのテキストファイル)。
+//! 診断レポート (問題が起きたときに、利用者が内容を確認してから問い合わせ (GitHub の Issues) に添付するためのテキストファイル)。
 //!
 //! - 自動では送信しない。ファイルを作るだけ (送るかどうかは利用者が決める)。
 //! - 入力した文章・ファイルの内容・辞書やルールに登録した語は含めない (件数だけ)。
@@ -78,7 +78,7 @@ pub fn build_report(info: &Info) -> String {
     let mut s = String::new();
     let _ = writeln!(s, "Sumiveil 診断レポート / Diagnostic report");
     let _ = writeln!(s, "======================================");
-    let _ = writeln!(s, "このファイルは自動では送信されません。内容を確認してから、必要に応じて担当者に送ってください。");
+    let _ = writeln!(s, "このファイルは自動では送信されません。内容を確認してから、必要に応じて GitHub の Issues (https://github.com/sumiveil-dev/Sumiveil/issues) に添付してください。");
     let _ = writeln!(s, "入力した文章・ファイルの内容・辞書やルールに登録した語は含まれていません。");
     let _ = writeln!(s);
     let _ = writeln!(s, "作成理由: {}", info.reason.label());
@@ -244,33 +244,5 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn redacts_quoted_text() {
-        let msg = "byte index 5 is not a char boundary; it is inside 'あ' (bytes 3..6) of `山田太郎 090-1234-5678`";
-        let r = redact(msg);
-        assert!(!r.contains("山田") && r.contains("<省略>"), "{r}");
-    }
-
-    #[test]
-    fn dates() {
-        assert_eq!(civil_from_days(0), (1970, 1, 1));
-        assert_eq!(civil_from_days(20_356), (2025, 9, 25));
-        assert_eq!(civil_from_days(-1), (1969, 12, 31));
-    }
-
-    #[test]
-    fn report_has_no_registered_words() {
-        let mut cfg = crate::Config::default();
-        cfg.keywords.push(crate::config::KeywordGroup { label: "X".into(), name: "秘密".into(), words: vec!["プロジェクト黒猫".into()], ..Default::default() });
-        cfg.allowlist.values.push("boss@corp.example".into());
-        let loaded = LoadedConfig { config: cfg, path: None, active_profile: "default".into(), profiles: vec![], warnings: vec![] };
-        let path = PathBuf::from(r"C:\tmp\sumiveil\config.toml");
-        let info = Info { reason: Reason::Manual, program: "test", config_path: &path, loaded: Some(&loaded), config_error: None, extra: vec![], error: Some("panicked at `黒猫の件`".into()) };
-        let r = build_report(&info);
-        assert!(!r.contains("黒猫") && !r.contains("boss@") && !r.contains("秘密"), "{r}");
-        assert!(r.contains("1 グループ / 1 語"), "{r}");
-    }
-}
+#[path = "tests/diag.rs"]
+mod tests;

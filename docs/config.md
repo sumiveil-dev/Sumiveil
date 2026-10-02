@@ -21,7 +21,7 @@ include = ["\\\\fileserver\\share\\sumiveil-team.toml", "%USERPROFILE%\\sumiveil
 
 - 相対パスはこのファイルのフォルダ基準、`%VAR%` は環境変数として展開されます。
 - `custom_rules` `keywords` `allowlist.*` のリストは **追加** (合成)、それ以外の値は **上書き** です。
-- `sumiveil config export/import`、GUI の「設定ファイル」画面からも受け渡しできます。
+- `sumiveil config export/import`、GUI の「設定」→「ファイル」からも受け渡しできます。
 
 ## マスク表示のテンプレート
 
@@ -69,8 +69,8 @@ priority = 50              # 重なったときは優先度 → 信頼度 → �
 propagate = true           # 確度の高い人名を文中の他の出現箇所にも適用
 use_dictionary = true      # 内蔵の姓名辞書 (敬称なしの人名)
 dictionary_threshold = 0.6
-use_morphology = false     # 形態素解析 (Lindera + IPADIC)。追加の辞書が必要 (インストーラーの「完全インストール」)
-morphology_dict = ""       # 辞書フォルダ。空なら <exe>\dict\ipadic、%LOCALAPPDATA%\Sumiveil\dict\ipadic の順に探す
+use_morphology = false     # 形態素解析 (Lindera + IPADIC)。追加の辞書が必要 (インストーラーで「形態素解析辞書」にチェック、ポータブル版は morphology-dict.zip を同じフォルダに展開)
+morphology_dict = ""       # 辞書フォルダ。空なら <exe>\dict\ipadic、<exe>\..\dict\ipadic、%LOCALAPPDATA%\Sumiveil\dict\ipadic の順に探す
 
 [[keywords]]               # 必ずマスクする語
 label = "CLIENT"
@@ -89,8 +89,8 @@ template = "<{label}_{n}>"
 case_insensitive = false
 
 [allowlist]                # マスクしない
-values = ["support@mycompany.co.jp"]
-domains = ["example.com", "mycompany.co.jp"]   # メール・ホスト名・URL (サブドメイン含む)
+values = ["support@example.ne.jp"]
+domains = ["example.com", "example.ne.jp"]   # メール・ホスト名・URL (サブドメイン含む)
 patterns = ['192\.168\..*']                   # 値全体に一致する正規表現
 
 [gui]
@@ -101,6 +101,7 @@ tray_enabled = true
 close_to_tray = false
 hotkey = "Ctrl+Alt+M"
 accent_color = "auto"      # アクセントカラー: auto (Windows の設定に従う) | "#RRGGBB"
+renderer = "auto"          # 描画方式: auto | opengl | directx | software (表示がおかしい・真っ白なときは software。再起動後に反映)
 
 [gui.shortcuts]            # アプリ内のショートカットキー ("" で無効)
 open = "Ctrl+O"            # ファイルを開く
@@ -120,7 +121,7 @@ output_encoding = "same"   # テキストファイルの出力: same | utf-8 | u
 properties = "ask"         # Office 文書のプロパティ (作成者・会社名など): ask (その都度確認) | mask | clear (消す) | keep (残す)
 ```
 
-ショートカットキーは、GUI の「設定」→「ショートカットキー」で、実際にキーを押して登録することもできます。
+ショートカットキーは、GUI の「設定」→「キー操作とトレイ」→「アプリ内のショートカット」で、実際にキーを押して登録することもできます。
 Ctrl か Alt を含めてください (F1〜F24 は単独でも可)。Ctrl+C / V / X / A / Z / Y は入力欄で使うため割り当てられません。
 同じキーを 2 つの操作やグローバルホットキー (`hotkey`) に割り当てると、`sumiveil config validate` で警告が出ます。
 
@@ -138,7 +139,7 @@ enabled = false
 ```
 
 切り替え: GUI のツールバー、`sumiveil config use customer_mail`、または一時的に `sumiveil -p customer_mail ...`。
-GUI の設定画面でプロファイル使用中に「検出対象」「マスクの表示」「人名・地名」を変更すると、そのプロファイル内に保存されます。
+GUI の設定画面でプロファイル使用中に「検出対象」(人名・地名を含む)「マスクの表示」を変更すると、そのプロファイル内に保存されます。
 
 同梱のプロファイル:
 

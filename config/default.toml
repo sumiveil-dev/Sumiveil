@@ -55,7 +55,7 @@ hash_salt = ""             # {hash} / {fake} 用の秘密のソルト (チーム
 propagate = true             # 確度の高い人名が見つかったら文中の同じ名前もマスク
 use_dictionary = true        # 内蔵の姓名辞書で敬称なしの人名も検出
 dictionary_threshold = 0.6   # 辞書層の採用しきい値
-use_morphology = false       # 形態素解析で文脈から人名・地名を検出 (追加の辞書が必要: インストーラーの「完全インストール」)
+use_morphology = false       # 形態素解析で文脈から人名・地名を検出 (追加の辞書が必要: インストーラーで「形態素解析辞書」にチェック、ポータブル版は morphology-dict.zip を同じフォルダに展開)
 morphology_dict = ""         # 辞書フォルダ (空なら exe フォルダの dict\ipadic などを自動で探す)
 
 # ---------------------------------------------------------------------------
@@ -131,7 +131,7 @@ include = [
   "*.eml", "*.msg", "*.docx", "*.xlsx", "*.pptx", "*.pdf",
 ]
 exclude = []
-suffix = ".masked"           # 出力先フォルダ未指定時: report.txt → report.masked.txt (PDF / .msg は report.masked.txt)
+suffix = ".masked"           # 出力先フォルダ未指定時: report.txt → report.masked.txt (PDF / .msg は report.masked.pdf.txt)
 output_encoding = "same"     # テキストファイルの出力: "same" | "utf-8" | "utf-8-bom" | "shift_jis" | "utf-16le"
 
 # ---------------------------------------------------------------------------

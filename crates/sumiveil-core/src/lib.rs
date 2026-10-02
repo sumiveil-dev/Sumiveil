@@ -5,6 +5,7 @@
 pub mod align;
 pub mod batch;
 pub mod catalog;
+pub mod company;
 pub mod config;
 pub mod custom;
 pub mod detector;
@@ -15,7 +16,9 @@ pub mod engine;
 pub mod fake;
 pub mod formats;
 pub mod lang;
+pub mod lexicon;
 pub mod morph;
+pub mod refiners;
 pub mod names;
 pub mod report;
 pub mod search;

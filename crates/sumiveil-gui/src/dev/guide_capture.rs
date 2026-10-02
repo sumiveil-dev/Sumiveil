@@ -1,4 +1,5 @@
 //! 利用ガイドの画像をアプリ自身が作る (cargo feature "guide-capture" のときだけ組み込む。配布版には入れない)。
+//! 本体とは `super::wrap` (撮影の状態を持つ包み) と `guide_mark!` (部品の位置の記録) だけでつながる。
 //!
 //! - アプリの画面 (`--capture-shot <png> [--capture-steps <手順>]`):
 //!   通常どおり起動して指定の画面を開き、アプリ内の疑似マウスイベントでホバー・クリックしてから、
@@ -81,7 +82,44 @@ fn parse_target(s: &str) -> Option<Target> {
     Some(Target::Pos(egui::pos2(x.trim().parse().ok()?, y.trim().parse().ok()?)))
 }
 
+/// 起動引数で指定された撮影 (出力先の PNG, 手順)。`take_args` が記録し、`Shot::from_args` が使う。
+static SHOT_ARGS: std::sync::OnceLock<(PathBuf, String)> = std::sync::OnceLock::new();
+
+/// 撮影用の引数を取り除いた残りを返す。インストーラーの撮影なら、ここで終了する (GUI は起動しない)。
+/// - `--capture-shot <png>` / `--capture-steps <手順>`: アプリの画面
+/// - `--capture-setup <installer.exe> <出力フォルダ>` / `--capture-upgrade <installer.exe> <出力フォルダ>`: インストーラーの画面
+pub fn take_args(args: Vec<std::ffi::OsString>) -> Vec<std::ffi::OsString> {
+    fn value(it: &mut std::vec::IntoIter<std::ffi::OsString>) -> std::ffi::OsString {
+        it.next().unwrap_or_default()
+    }
+    let mut rest = vec![];
+    let (mut out, mut steps) = (None::<PathBuf>, String::new());
+    let mut it = args.into_iter();
+    while let Some(a) = it.next() {
+        match a.to_str() {
+            Some("--capture-shot") => out = Some(PathBuf::from(value(&mut it))),
+            Some("--capture-steps") => steps = value(&mut it).into_string().unwrap_or_default(),
+            Some(k @ ("--capture-setup" | "--capture-upgrade")) => {
+                let installer = PathBuf::from(value(&mut it));
+                let dir = PathBuf::from(value(&mut it));
+                let code = if k == "--capture-setup" { capture_setup(&installer, &dir) } else { capture_upgrade(&installer, &dir) };
+                std::process::exit(code);
+            }
+            _ => rest.push(a),
+        }
+    }
+    if let Some(out) = out {
+        let _ = SHOT_ARGS.set((out, steps));
+    }
+    rest
+}
+
 impl Shot {
+    /// 起動引数で撮影が指定されていれば作る。
+    pub fn from_args() -> Option<Self> {
+        SHOT_ARGS.get().map(|(out, steps)| Self::new(out.clone(), steps))
+    }
+
     pub fn new(out: PathBuf, steps: &str) -> Self {
         let steps = steps
             .split(';')
@@ -418,7 +456,7 @@ mod setup {
 }
 
 /// `--capture-upgrade` の処理 (動作確認用。GUI は起動しない)。
-pub fn capture_upgrade(installer: &Path, out: &Path) -> i32 {
+fn capture_upgrade(installer: &Path, out: &Path) -> i32 {
     match setup::run_upgrade(installer, out) {
         Ok(()) => 0,
         Err(e) => {
@@ -429,7 +467,7 @@ pub fn capture_upgrade(installer: &Path, out: &Path) -> i32 {
 }
 
 /// `--capture-setup` の処理 (GUI は起動しない)。
-pub fn capture_setup(installer: &Path, out: &Path) -> i32 {
+fn capture_setup(installer: &Path, out: &Path) -> i32 {
     match setup::run(installer, out) {
         Ok(()) => 0,
         Err(e) => {

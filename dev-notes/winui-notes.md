@@ -53,7 +53,7 @@ Sumiveil の GUI は egui で作り、配色・部品・アイコンはすべて
 - 左右比較のエディタ: 検出箇所の色分け・下線、行番号、左右のスクロール同期、ホバーで詳細表示 (`mask_page.rs` の `build_job` など)。RichEditBox / TextBlock の書式指定で同じことができるか
 - トレイ常駐とグローバルホットキー (今は tray-icon と global-hotkey)。windows-rs の `windows-notifyicon` で代替できるか
 - 一括処理の進捗表示と中止 (別スレッドの worker との連携)
-- 起動時間と常駐時のメモリ (今は約 100 MB)
+- 起動時間と常駐時のメモリ (今は約 130 MB。README の値)
 
 ## 5. A を選ぶ場合 (egui のまま見た目だけ寄せる)
 

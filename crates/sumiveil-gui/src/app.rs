@@ -63,9 +63,6 @@ pub struct Startup {
     pub page: Option<String>,
     /// 起動時に検索する文字列 (`--find`)
     pub find: Option<String>,
-    /// 利用ガイドの撮影 (出力先の PNG, 手順)
-    #[cfg(feature = "guide-capture")]
-    pub capture: Option<(PathBuf, String)>,
 }
 
 pub struct App {
@@ -123,8 +120,6 @@ pub struct App {
     applied_accent: Option<Color32>,
     was_focused: bool,
     first_frame: bool,
-    #[cfg(feature = "guide-capture")]
-    capture: Option<crate::guide_capture::Shot>,
     start_hidden: bool,
     offscreen: bool,
 }
@@ -177,7 +172,7 @@ impl App {
         let system_accent = win::accent_color();
         let renderer_info = renderer_info(cc);
         crate::diag::set_renderer(&renderer_info);
-        crate::debug_log(&format!("renderer: {renderer_info}\njapanese font: {}", crate::fonts::has_japanese()));
+        crate::diag::debug_log(&format!("renderer: {renderer_info}\njapanese font: {}", crate::fonts::has_japanese()));
 
         let cfg_path = config::resolve_config_path(None);
         let (loaded, config_error) = match config::load(&cfg_path, None) {
@@ -261,8 +256,6 @@ impl App {
             applied_accent: None,
             was_focused: false,
             first_frame: true,
-            #[cfg(feature = "guide-capture")]
-            capture: startup.capture.clone().map(|(out, steps)| crate::guide_capture::Shot::new(out, &steps)),
             start_hidden: startup.start_in_tray,
             offscreen: startup.start_in_tray,
         };
@@ -805,7 +798,7 @@ impl App {
                     "Detects and masks personal and confidential information in text. Everything runs locally on this PC; it never connects to the Internet (no telemetry).",
                 ));
                 ui.add_space(6.0);
-                let r = ui.label(format!("{}: {}", self.t("設定ファイル", "Settings file"), self.cfg_path.display()));
+                let r = ui.label(format!("{}: {}", self.t("設定ファイル", "Settings file"), win::external_path(&self.cfg_path).display()));
                 crate::guide_mark!(ui.ctx(), "about-cfg-path", r.rect);
                 ui.label(format!("{}: sumiveil --help", self.t("コマンドライン", "Command line")));
                 widgets::secondary(ui, &format!("{}: {}", self.t("描画", "Renderer"), self.renderer_info));
@@ -822,8 +815,8 @@ impl App {
             widgets::card(ui, |ui| {
                 widgets::subtitle(ui, self.t("問題が起きたとき", "Troubleshooting"));
                 ui.label(self.t(
-                    "診断レポート (バージョン・Windows・描画方式・設定のオン/オフや件数) をファイルに書き出します。自動では送信されません。内容を確認してから、問い合わせ先にファイルを送ってください。入力した文章・ファイルの内容・辞書やルールに登録した語は含まれません。内部エラーが起きたときは自動で作成されます。",
-                    "Writes a diagnostic report (version, Windows, renderer, settings switches and counts) to a file. It is never sent automatically; review it and send the file to your contact. It never includes your text, file contents or registered words. A report is also created automatically after an internal error.",
+                    "診断レポート (バージョン・Windows・描画方式・設定のオン/オフや件数) をファイルに書き出します。自動では送信されません。内容を確認してから、問い合わせ (GitHub の Issues) にファイルを添付してください。入力した文章・ファイルの内容・辞書やルールに登録した語は含まれません。内部エラーが起きたときは自動で作成されます。",
+                    "Writes a diagnostic report (version, Windows, renderer, settings switches and counts) to a file. It is never sent automatically; review it before attaching the file to a GitHub issue. It never includes your text, file contents or registered words. A report is also created automatically after an internal error.",
                 ));
                 ui.add_space(4.0);
                 let mut create = false;
@@ -878,24 +871,20 @@ impl App {
                 egui::CollapsingHeader::new("IPADIC License").show(ui, |ui| {
                     ui.label(RichText::new(include_str!("../../sumiveil-core/data/IPADIC-LICENSE.txt")).monospace().size(11.0));
                 });
+                // インストール先を開きにくい環境 (パッケージとしてのインストールなど) でも、ここから開けるようにする
+                let notices = std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("THIRD-PARTY-NOTICES.txt")));
+                if let Some(notices) = notices.filter(|p| p.exists()) {
+                    if widgets::icon_button(ui, Icon::Report, self.t("THIRD-PARTY-NOTICES.txt を開く", "Open THIRD-PARTY-NOTICES.txt")).clicked() {
+                        let _ = std::process::Command::new("notepad.exe").arg(&notices).spawn();
+                    }
+                }
             });
         }
     }
 }
 
 impl eframe::App for App {
-    #[cfg(feature = "guide-capture")]
-    fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
-        if let Some(c) = self.capture.as_mut() {
-            c.raw_input_hook(ctx, raw_input);
-        }
-    }
-
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        #[cfg(feature = "guide-capture")]
-        if let Some(c) = self.capture.as_mut() {
-            c.logic(ctx);
-        }
         if self.start_hidden {
             if self.tray.is_none() {
                 // トレイが無いと操作できなくなるので表示する
@@ -956,16 +945,6 @@ impl eframe::App for App {
             });
         });
         self.toasts_ui(&ctx);
-        // 診断用: SUMIVEIL_DEBUG_REPAINT=<ファイル> で再描画の理由を記録する
-        if let Some(path) = std::env::var_os("SUMIVEIL_DEBUG_REPAINT") {
-            let causes = ctx.repaint_causes();
-            if !causes.is_empty() {
-                use std::io::Write;
-                if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
-                    let _ = writeln!(f, "{:?}", causes);
-                }
-            }
-        }
     }
 
     fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {

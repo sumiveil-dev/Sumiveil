@@ -10,7 +10,7 @@
 | `sumiveil file.txt` | ファイル |
 | `sumiveil a.txt b.log` | 複数ファイル (`--out-dir` または接尾辞付きで横に出力) |
 | `sumiveil -r folder` | フォルダ (サブフォルダ含む。対象は `--include` / 設定の `batch.include`) |
-| `type file | sumiveil` / `sumiveil -` | 標準入力 (パイプ) |
+| `type file \| sumiveil` / `sumiveil -` | 標準入力 (パイプ) |
 | `sumiveil -t "テキスト"` | 文字列を直接 |
 | `sumiveil --from-clipboard` | クリップボード |
 
@@ -45,6 +45,8 @@
 | `--report r.csv` / `r.json` | 集計レポート |
 | `--stats` | 検出件数を標準エラーに表示 |
 | `--properties clear` | Office 文書のプロパティ (作成者など) の扱い: `mask` / `clear` / `keep` |
+| `-q` / `--quiet` | 標準エラーへの警告・集計を出さない |
+| `--color auto` | 色付けの有無: `auto` / `always` / `never` |
 
 入力ファイル自体を上書きすることはありません (出力先が入力と同じ場合はエラー)。
 
@@ -52,7 +54,7 @@
 
 ```json
 {
-  "tool": "sumiveil", "version": "1.0.0", "source": "report.txt", "encoding": "Shift_JIS", "profile": "default",
+  "tool": "sumiveil", "version": "1.0.1", "source": "report.txt", "encoding": "Shift_JIS", "profile": "default",
   "masked": "……",
   "detections": [
     { "id": "email", "category": "contact", "label": "EMAIL", "name": "メールアドレス",
@@ -77,6 +79,8 @@ Office 文書・メール・PDF では、検出ごとに `"location": "顧客一
 | `--min-confidence 0.7` | 信頼度のしきい値 |
 | `--separate-numbering` | 連番をファイルごとにリセット |
 | `--line-buffered` | 標準入力を 1 行ずつ処理 (`tail -f` 等) |
+| `--include "*.log"` / `--exclude "*.min.js"` | フォルダ内で対象にする・除外するファイル名 |
+| `--encoding sjis` / `--output-encoding utf-8` | 入力・出力の文字コード (既定は自動判定・入力と同じ) |
 | `--config path` | 設定ファイルを指定 (環境変数 `SUMIVEIL_CONFIG` でも可) |
 
 ## サブコマンド
@@ -93,8 +97,8 @@ Office 文書・メール・PDF では、検出ごとに `"location": "顧客一
 | `sumiveil config set <key> <value>` | 値を設定 (例: `masking.template '"[{label}]"'`) |
 | `sumiveil config unset <key>` | 既定値に戻す |
 | `sumiveil config enable/disable <id>...` | 検出器・カテゴリの切り替え |
-| `sumiveil config init [--portable]` | コメント付きの既定設定を作成 |
-| `sumiveil config export <file>` / `import <file> [--merge]` | 設定の共有 |
+| `sumiveil config init [--portable] [--force]` | コメント付きの既定設定を作成 (`--force` で上書き) |
+| `sumiveil config export <file> [--resolved]` / `import <file> [--merge]` | 設定の共有 (`--resolved` は既定値も含めて書き出す) |
 | `sumiveil config validate [file]` | 設定ファイルの検証 |
 | `sumiveil config edit` | エディタで開く (`VISUAL` / `EDITOR`、既定はメモ帳) |
 | `sumiveil config profiles` / `use <name>` | プロファイルの一覧・切り替え |

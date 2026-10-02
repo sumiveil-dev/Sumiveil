@@ -33,6 +33,9 @@ The user interface and the user guide are mainly in Japanese (the GUI also has a
 - 67 detectors that you can turn on or off by category
 - Automatic detection is not perfect. Always review the result before sharing it
 
+Download `Sumiveil-Setup-<version>-x64.exe` from [Releases](https://github.com/sumiveil-dev/Sumiveil/releases) and run it
+(per-user install needs no administrator rights). A portable ZIP and an optional morphological-analysis dictionary ZIP are also available.
+
 About this project:
 
 - This is a small hobby project maintained by one person. Replies and fixes may take a while. Thank you for your patience.
@@ -78,9 +81,10 @@ About this project:
 
 > コード署名していないため、初回起動時に Microsoft Defender SmartScreen の警告が表示されることがあります。配布元 (GitHub の Releases) を確認したうえで「詳細情報」→「実行」で起動してください。社内で配布する場合は、社内のコード署名証明書で署名することもできます。
 
+
 ## 利用ガイド (PDF)
 
-画面写真付きの利用者向けガイド `docs/Sumiveil-UserGuide-ja.pdf` を同梱しています (スタートメニューの「Sumiveil 利用ガイド」、アプリの「設定」→「情報」からも開けます)。
+画面写真付きの利用者向けガイド (PDF) は、[Releases](https://github.com/sumiveil-dev/Sumiveil/releases) の `Sumiveil-<version>-UserGuide-ja.pdf` です。インストーラー版・ポータブル版にも同梱しています (スタートメニューの「Sumiveil 利用ガイド」、アプリの「設定」→「情報」からも開けます)。
 インストール手順・基本操作・ホットキー・フォルダ一括処理・設定・よくあるつまずきと対処 (Q&A) をまとめています。
 元の HTML は `docs/guide/guide.html` で、`scripts/build-guide.ps1` で PDF を作り直せます (`scripts/package.ps1` が自動で行います)。
 
@@ -141,7 +145,7 @@ label = "CLIENT"
 words = ["アクメ商事", "Acme Corp"]
 
 [allowlist]
-domains = ["example.com", "mycompany.co.jp"]
+domains = ["example.com", "example.ne.jp"]
 ```
 
 詳しくは [docs/config.md](docs/config.md) を参照してください。
@@ -150,6 +154,8 @@ domains = ["example.com", "mycompany.co.jp"]
 
 - 自動検出は完全ではありません。社外に出す前に、左右比較画面で結果を必ず目視確認してください。
 - 検出の感度は「最低信頼度」やプロファイルで調整できます。見逃しが多い場合は `strict` プロファイルを試してください。
+- 会社名は「株式会社」「(株)」などの法人格を手がかりに検出します。法人格の付かない取引先名・製品名・案件名は、「設定」→「辞書とルール」の「キーワード辞書」に登録すると確実に隠せます。
+- 敬称や項目名の付かない姓だけの記載は、「田中・佐藤・鈴木の 3 名」「出席者: 田中、佐藤」のような並びや、「田中が担当」「山本に連絡」「田中より」のような書き方なら検出します。それ以外の位置にある姓だけの記載は見逃すことがあります (「森林」「出口」のように姓と同じ表記の一般語が多いため)。`strict` プロファイルでは、行に姓だけがある場合なども検出します。形態素解析 (追加の辞書) やキーワード辞書も使えます。
 - 問題が起きたときは「設定」→「情報」の「診断レポートを作成」で作ったファイル (設定ファイルと同じ場所の `diagnostics` フォルダ) を、内容を確認してから [GitHub の Issues](https://github.com/sumiveil-dev/Sumiveil/issues) に添付してください (個人情報が含まれていないことを必ず確認してください)。Sumiveil が自動で送信することはありません。
 
 ## ビルド (開発者向け)
@@ -185,6 +191,7 @@ MIT License (`LICENSE.txt`)。Copyright (c) 2026 sumiveil-dev
 
 内蔵辞書は mecab-ipadic (`crates/sumiveil-core/data/IPADIC-LICENSE.txt`。配布物には同梱) と米国国勢調査局の公開データ (パブリックドメイン) から作成しています。
 使用しているライブラリのライセンスは `THIRD-PARTY-NOTICES.txt` を参照してください。
+プライバシーポリシーは [PRIVACY.md](PRIVACY.md) にあります (情報は一切収集しません)。
 
 アイコン・アプリのアイコン・画面のデザインは Sumiveil の開発者による独自のものです。
 記載されている会社名・製品名・サービス名は、各社の商標または登録商標です。Sumiveil は、それらの会社とは関係がありません。

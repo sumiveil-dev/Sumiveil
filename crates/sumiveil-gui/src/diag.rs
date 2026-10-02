@@ -57,7 +57,7 @@ fn write_from_scratch(reason: Reason, error: String) -> Option<PathBuf> {
 fn notify(title: &str, path: Option<&Path>) {
     let body = match path {
         Some(p) => format!(
-            "{title}\n\n診断レポートを作成しました (自動では送信されません):\n{}\n\n問い合わせの際は、内容を確認してからこのファイルを担当者に送ってください。\n\nA diagnostic report was saved (it is never sent automatically).",
+            "{title}\n\n診断レポートを作成しました (自動では送信されません):\n{}\n\n問い合わせの際は、内容を確認してから、このファイルを GitHub の Issues に添付してください。\n\nA diagnostic report was saved (it is never sent automatically).",
             p.display()
         ),
         None => format!("{title}\n\n診断レポートを保存できませんでした。"),
@@ -98,4 +98,14 @@ pub fn report_startup_failure(errors: &[String]) {
     let error = format!("試した描画方式と結果:\n{}", errors.join("\n"));
     let path = write_from_scratch(Reason::StartupFailure, error);
     notify("Sumiveil の画面を表示できませんでした。/ Sumiveil could not open its window.", path.as_deref());
+}
+
+/// 診断用: 環境変数 SUMIVEIL_DEBUG_LOG のファイルに 1 行追記する。
+pub fn debug_log(line: &str) {
+    if let Some(path) = std::env::var_os("SUMIVEIL_DEBUG_LOG") {
+        use std::io::Write;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+            let _ = writeln!(f, "{line}");
+        }
+    }
 }

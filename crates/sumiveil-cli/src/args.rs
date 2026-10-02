@@ -184,7 +184,7 @@ pub struct MaskArgs {
     #[arg(long)]
     pub line_buffered: bool,
 
-    /// Restart {n} numbering for each file (default: shared across files)
+    /// Restart placeholder numbering (NAME_1, NAME_2, ...) for each file (default: shared across files)
     #[arg(long)]
     pub separate_numbering: bool,
 
@@ -289,7 +289,7 @@ const JA_ARGS: &[(&str, &str)] = &[
     ("diff", "マスク後テキストの代わりに変更行を差分形式で表示"),
     ("stats", "検出件数を標準エラーに表示"),
     ("line_buffered", "標準入力を 1 行ずつ処理 (tail -f などのストリーム用)"),
-    ("separate_numbering", "{n} の連番をファイルごとにリセット (既定はファイル間で共通)"),
+    ("separate_numbering", "置換後の連番 (NAME_1, NAME_2 …) をファイルごとにリセット (既定はファイル間で共通)"),
     ("suffix", "入力の横に書き出すときのファイル名接尾辞 (既定は設定の batch.suffix)"),
     ("properties", "Office 文書のプロパティ (作成者・会社名など) の扱い: mask / clear (消す) / keep (残す)。既定は設定の files.properties (\"ask\" のときは clear)"),
     ("show_values", "detect/check の出力に元の値を表示"),

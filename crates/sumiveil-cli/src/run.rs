@@ -417,16 +417,14 @@ pub fn run(g: &GlobalOpts, a: MaskArgs, lang: Lang, mode: Mode) -> Result<ExitCo
         }
     }
 
-    // JSON を標準出力へ (単一入力なら 1 オブジェクト、複数なら配列)
+    // JSON を標準出力へ (単一入力なら 1 オブジェクト、複数なら配列)。文字列にまとめずに直接書く
     if !json_outputs.is_empty() || (json && mode != Mode::Mask && !multi) {
-        let s = if json_outputs.len() == 1 && !multi {
-            serde_json::to_string_pretty(&json_outputs[0])?
-        } else {
-            serde_json::to_string_pretty(&json_outputs)?
-        };
-        match (&a.output, mode) {
-            (Some(p), Mode::Mask) => write_file(p, format!("{s}\n").as_bytes())?,
-            _ => write_stdout(format!("{s}\n").as_bytes())?,
+        let single = json_outputs.len() == 1 && !multi;
+        match (&a.output, mode, single) {
+            (Some(p), Mode::Mask, true) => write_json_file(p, &json_outputs[0])?,
+            (Some(p), Mode::Mask, false) => write_json_file(p, &json_outputs)?,
+            (_, _, true) => write_json_stdout(&json_outputs[0])?,
+            (_, _, false) => write_json_stdout(&json_outputs)?,
         }
     }
 
@@ -466,9 +464,12 @@ pub fn run(g: &GlobalOpts, a: MaskArgs, lang: Lang, mode: Mode) -> Result<ExitCo
             }
             s
         } else {
-            serde_json::to_string_pretty(&reports)? + "\n"
+            write_json_file(rp, &reports)?;
+            String::new()
         };
-        write_file(rp, body.as_bytes())?;
+        if !body.is_empty() {
+            write_file(rp, body.as_bytes())?;
+        }
     }
 
     let total: usize = total_counts.values().sum();

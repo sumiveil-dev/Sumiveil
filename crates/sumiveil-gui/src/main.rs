@@ -4,9 +4,8 @@
 mod app;
 mod diag;
 mod batch_page;
+mod dev;
 mod fonts;
-#[cfg(feature = "guide-capture")]
-mod guide_capture;
 mod icon;
 mod icons;
 mod mask_page;
@@ -21,63 +20,22 @@ mod worker;
 
 use std::path::PathBuf;
 
-/// 利用ガイドの撮影で操作する部品の位置を記録する (guide-capture のビルドだけ。配布版では何もしない)。
-#[cfg(feature = "guide-capture")]
-#[macro_export]
-macro_rules! guide_mark {
-    ($ctx:expr, $name:expr, $rect:expr) => {
-        $crate::guide_capture::mark($ctx, $name, $rect)
-    };
-}
-#[cfg(not(feature = "guide-capture"))]
-#[macro_export]
-macro_rules! guide_mark {
-    ($ctx:expr, $name:expr, $rect:expr) => {
-        let _ = (&$ctx, &$rect);
-    };
-}
-
 use eframe::egui;
 
 fn main() -> eframe::Result<()> {
     diag::install_panic_hook();
-    // 診断レポートの動作確認用: 環境変数 SUMIVEIL_DEBUG_PANIC があれば、わざと内部エラーを起こす
-    if std::env::var_os("SUMIVEIL_DEBUG_PANIC").is_some() {
-        panic!("SUMIVEIL_DEBUG_PANIC による動作確認 (伏せ字の確認: `山田太郎 090-1234-5678`)");
-    }
     let mut file: Option<PathBuf> = None;
     let mut start_in_tray = false;
     let mut page: Option<String> = None;
     let mut find: Option<String> = None;
-    #[cfg(feature = "guide-capture")]
-    let mut capture: Option<(PathBuf, String)> = None;
-    let mut args = std::env::args_os().skip(1);
+    // 開発用の引数 (利用ガイドの撮影など) は dev が先に取り除く
+    let mut args = dev::take_args(std::env::args_os().skip(1).collect()).into_iter();
     while let Some(a) = args.next() {
         match a.to_str() {
             Some("--tray") => start_in_tray = true,
             Some("--page") => page = args.next().and_then(|p| p.into_string().ok()),
             // 検索バーにこの文字列を入れて開く (一括処理の画面なら横断検索を始める)
             Some("--find") => find = args.next().and_then(|p| p.into_string().ok()),
-            // 利用ガイドの撮影用 (guide_capture.rs)
-            #[cfg(feature = "guide-capture")]
-            Some("--capture-shot") => capture = args.next().map(|p| (PathBuf::from(p), capture.take().map(|c| c.1).unwrap_or_default())),
-            #[cfg(feature = "guide-capture")]
-            Some("--capture-steps") => {
-                let steps = args.next().and_then(|s| s.into_string().ok()).unwrap_or_default();
-                capture = Some((capture.take().map(|c| c.0).unwrap_or_default(), steps));
-            }
-            #[cfg(feature = "guide-capture")]
-            Some("--capture-setup") => {
-                let installer = PathBuf::from(args.next().unwrap_or_default());
-                let out = PathBuf::from(args.next().unwrap_or_default());
-                std::process::exit(guide_capture::capture_setup(&installer, &out));
-            }
-            #[cfg(feature = "guide-capture")]
-            Some("--capture-upgrade") => {
-                let installer = PathBuf::from(args.next().unwrap_or_default());
-                let out = PathBuf::from(args.next().unwrap_or_default());
-                std::process::exit(guide_capture::capture_upgrade(&installer, &out));
-            }
             Some(s) if s.starts_with("--") => {}
             _ => file = Some(PathBuf::from(a)),
         }
@@ -103,13 +61,11 @@ fn main() -> eframe::Result<()> {
         start_in_tray,
         page: page.clone(),
         find: find.clone(),
-        #[cfg(feature = "guide-capture")]
-        capture: capture.clone(),
     };
     let mut last = Ok(());
     let mut errors = vec![];
     for mode in render_modes(&renderer_setting) {
-        debug_log(&format!("starting renderer {mode:?}"));
+        diag::debug_log(&format!("starting renderer {mode:?}"));
         match run(mode, startup()) {
             Ok(()) => return Ok(()),
             Err(e) => {
@@ -122,16 +78,6 @@ fn main() -> eframe::Result<()> {
     // どの描画方式でも画面を出せなかった: 診断レポートを作って知らせる (黙って終了しない)
     diag::report_startup_failure(&errors);
     last
-}
-
-/// 診断用: 環境変数 SUMIVEIL_DEBUG_LOG のファイルに 1 行追記する。
-pub fn debug_log(line: &str) {
-    if let Some(path) = std::env::var_os("SUMIVEIL_DEBUG_LOG") {
-        use std::io::Write;
-        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
-            let _ = writeln!(f, "{line}");
-        }
-    }
 }
 
 /// 描画方式。
@@ -194,5 +140,5 @@ fn run(mode: RenderMode, startup: app::Startup) -> eframe::Result<()> {
         viewport = viewport.with_position([-30000.0, -30000.0]);
     }
     let options = eframe::NativeOptions { wgpu_options, renderer, viewport, centered: visible, ..Default::default() };
-    eframe::run_native(win::WINDOW_TITLE, options, Box::new(move |cc| Ok(Box::new(app::App::new(cc, startup)))))
+    eframe::run_native(win::WINDOW_TITLE, options, Box::new(move |cc| Ok(dev::wrap(app::App::new(cc, startup)))))
 }

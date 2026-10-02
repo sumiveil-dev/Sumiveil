@@ -4,7 +4,7 @@
 ; ============================================================================
 
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.0.1"
 #endif
 #define AppName "Sumiveil"
 #define AppPublisher "sumiveil-dev"
@@ -20,6 +20,9 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
+AppPublisherURL=https://github.com/sumiveil-dev/Sumiveil
+AppSupportURL=https://github.com/sumiveil-dev/Sumiveil/issues
+AppUpdatesURL=https://github.com/sumiveil-dev/Sumiveil/releases
 VersionInfoVersion={#AppVersion}
 VersionInfoProductName={#AppName}
 VersionInfoDescription={#AppName} Setup

@@ -4373,7 +4373,7 @@ dependencies = [
 
 [[package]]
 name = "sumiveil-cli"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anstream",
  "anstyle",
@@ -4382,6 +4382,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "globset",
+ "serde",
  "serde_json",
  "sumiveil-core",
  "toml 1.1.6+spec-1.1.0",
@@ -4391,7 +4392,7 @@ dependencies = [
 
 [[package]]
 name = "sumiveil-core"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "aho-corasick",
  "cfb",
@@ -4422,7 +4423,7 @@ dependencies = [
 
 [[package]]
 name = "sumiveil-gui"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "arboard",

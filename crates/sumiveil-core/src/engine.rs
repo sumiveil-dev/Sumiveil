@@ -73,8 +73,8 @@ impl MaskResult {
 /// 連番 `{n}` の採番状態。複数ファイルで同じ番号を使いたい場合は使い回す。
 #[derive(Debug, Clone, Default)]
 pub struct MaskSession {
-    map: HashMap<(String, String), usize>,
-    counters: HashMap<String, usize>,
+    /// ラベル → (正規化した値 → 番号)。番号はラベルごとに 1 から振る
+    map: HashMap<String, HashMap<String, usize>>,
 }
 
 impl MaskSession {
@@ -83,32 +83,41 @@ impl MaskSession {
     }
 
     pub fn number(&mut self, label: &str, value: &str) -> usize {
-        let key = (label.to_string(), normalize_value(value));
-        if let Some(&n) = self.map.get(&key) {
+        let key = normalize_value(value);
+        if !self.map.contains_key(label) {
+            self.map.insert(label.to_string(), HashMap::new());
+        }
+        let numbers = self.map.get_mut(label).expect("inserted above");
+        if let Some(&n) = numbers.get(&key) {
             return n;
         }
-        let c = self.counters.entry(label.to_string()).or_insert(0);
-        *c += 1;
-        self.map.insert(key, *c);
-        *c
+        let n = numbers.len() + 1;
+        numbers.insert(key, n);
+        n
     }
 
     pub fn reset(&mut self) {
         self.map.clear();
-        self.counters.clear();
     }
 }
 
 /// 採番用に値を正規化 (表記ゆれを同一視する)。
 fn normalize_value(v: &str) -> String {
-    let n: String = v.nfkc().collect::<String>().to_lowercase();
+    // ASCII だけの値は NFKC で変わらないので、変換の文字列を作らない
+    let nfkc;
+    let n: &str = if v.is_ascii() {
+        v
+    } else {
+        nfkc = v.nfkc().collect::<String>();
+        &nfkc
+    };
     let digits = n.chars().filter(|c| c.is_ascii_digit()).count();
     let alnum = n.chars().filter(|c| c.is_alphanumeric()).count();
     if digits >= 6 && digits * 10 >= alnum * 8 {
         // 電話番号・カード番号等は数字だけで比較
         n.chars().filter(|c| c.is_ascii_digit()).collect()
     } else {
-        n.chars().filter(|c| !c.is_whitespace()).collect()
+        n.chars().filter(|c| !c.is_whitespace()).flat_map(char::to_lowercase).collect()
     }
 }
 
@@ -127,16 +136,22 @@ struct Allow {
 
 impl Allow {
     fn allows(&self, value: &str, meta: &DetectorMeta, extra: Option<&HashSet<String>>) -> bool {
-        let l = value.to_lowercase();
-        if self.values.contains(&l) || extra.is_some_and(|x| x.contains(&l)) {
-            return true;
-        }
+        let by_value = !self.values.is_empty() || extra.is_some_and(|x| !x.is_empty());
+        let by_domain = !self.domains.is_empty() && matches!(meta.id.as_str(), "email" | "hostname" | "url" | "unc_path");
         if self.patterns.iter().any(|p| p.is_match(value)) {
             return true;
         }
-        if matches!(meta.id.as_str(), "email" | "hostname" | "url" | "unc_path") && !self.domains.is_empty() {
+        // 小文字化 (文字列の確保) は、比べる対象があるときだけ
+        if !by_value && !by_domain {
+            return false;
+        }
+        let l = value.to_lowercase();
+        if by_value && (self.values.contains(&l) || extra.is_some_and(|x| x.contains(&l))) {
+            return true;
+        }
+        if by_domain {
             let host = extract_host(&l);
-            return self.domains.iter().any(|d| host == *d || host.ends_with(&format!(".{d}")));
+            return self.domains.iter().any(|d| host == *d || host.strip_suffix(d.as_str()).is_some_and(|h| h.ends_with('.')));
         }
         false
     }
@@ -212,6 +227,7 @@ impl Engine {
                 SpecKind::Regex(_) => Box::new(RegexDetector::from_catalog(i).unwrap()),
                 SpecKind::PersonName => Box::new(NameDetector::new(names_dict.clone(), cfg.names.dictionary_threshold).with_morphology(morph.clone())),
                 SpecKind::PlaceName => Box::new(PlaceDetector::new().with_morphology(morph.clone())),
+                SpecKind::Company => Box::new(crate::company::CompanyDetector::new(names_dict.clone(), morph.clone())),
             };
             let tpl_src = dc
                 .and_then(|d| d.template.clone())
@@ -488,98 +504,5 @@ pub fn mask_text(cfg: &Config, text: &str) -> MaskResult {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config::{load_str, AllowlistConfig, CustomRule, KeywordGroup};
-
-    fn cfg(s: &str) -> Config {
-        load_str(s, None).unwrap().config
-    }
-
-    #[test]
-    fn basic_masking() {
-        let r = mask_text(&Config::default(), "連絡先: taro@corp.co.jp / 090-1234-5678");
-        assert_eq!(r.output, "連絡先: <EMAIL_1> / <PHONE_1>");
-        assert_eq!(r.replacements.len(), 2);
-        assert_eq!(&r.output[r.replacements[0].out_start..r.replacements[0].out_end], "<EMAIL_1>");
-    }
-
-    #[test]
-    fn consistent_numbering() {
-        let r = mask_text(&Config::default(), "a@example1.co.jp b@example1.co.jp A@EXAMPLE1.CO.JP 090-1111-2222 09011112222");
-        assert_eq!(r.output, "<EMAIL_1> <EMAIL_2> <EMAIL_1> <PHONE_1> <PHONE_1>");
-    }
-
-    #[test]
-    fn templates_per_detector_and_category() {
-        let c = cfg("[detectors.email]\ntemplate = \"[{label_ja}]\"\n[categories.contact]\ntemplate = \"{shape:*}\"");
-        let r = mask_text(&c, "a@example1.co.jp 090-1234-5678");
-        assert_eq!(r.output, "[メールアドレス] ***-****-****");
-    }
-
-    #[test]
-    fn allowlist() {
-        let mut c = Config::default();
-        c.allowlist = AllowlistConfig { values: vec!["10.0.0.1".into()], patterns: vec![r"192\.168\..*".into()], ..Default::default() };
-        let r = mask_text(&c, "info@example.com admin@sub.example.com x@corp.co.jp 10.0.0.1 192.168.0.5 172.16.0.1");
-        assert_eq!(r.output, "info@example.com admin@sub.example.com <EMAIL_1> 10.0.0.1 192.168.0.5 <IPV4_1>");
-    }
-
-    #[test]
-    fn overlap_priority() {
-        // URL 認証情報 (優先度 88) がメール (60) より優先される
-        let r = mask_text(&Config::default(), "postgres://admin:pa55@db.corp.local/app");
-        assert!(r.output.contains("<URL_CREDENTIALS_1>"), "{}", r.output);
-    }
-
-    #[test]
-    fn custom_and_keywords() {
-        let mut c = Config::default();
-        c.custom_rules.push(CustomRule { id: "prj".into(), label: "PROJECT".into(), pattern: r"PRJ-\d{4}".into(), ..Default::default() });
-        c.keywords.push(KeywordGroup { label: "CLIENT".into(), words: vec!["アクメ商事".into()], ..Default::default() });
-        let r = mask_text(&c, "PRJ-1234 はアクメ商事向け");
-        assert_eq!(r.output, "<PROJECT_1> は<CLIENT_1>向け");
-    }
-
-    #[test]
-    fn name_propagation() {
-        let r = mask_text(&Config::default(), "山田様、お世話になっております。山田が伺います。");
-        assert_eq!(r.output, "<NAME_1>様、お世話になっております。<NAME_1>が伺います。");
-    }
-
-    #[test]
-    fn disabled_category() {
-        let c = cfg("[categories.contact]\nenabled = false");
-        let r = mask_text(&c, "TEL 090-1234-5678 / 10.1.2.3");
-        assert_eq!(r.output, "TEL 090-1234-5678 / <IPV4_1>");
-    }
-
-    #[test]
-    fn invalid_template_warns_but_works() {
-        let c = cfg("[detectors.email]\ntemplate = \"{bogus}\"");
-        let e = Engine::new(&c);
-        assert!(!e.warnings.is_empty());
-        let r = e.mask("a@example1.co.jp", &mut MaskSession::new());
-        assert_eq!(r.output, "<EMAIL_1>");
-    }
-
-    #[test]
-    fn realistic_mixed_text() {
-        let text = "\
-From: 鈴木 一郎 <ichiro.suzuki@corp.example.co.jp>
-To: 株式会社サンプル商事 田中様
-
-お世話になっております。
-サーバー db01.prod.internal (10.20.30.40) のパスワードは password=Hunter2! です。
-カード番号 4111 1111 1111 1111、マイナンバー 1234 5678 9018。
-住所: 東京都千代田区架空町1丁目2-3
-C:\\Users\\ichiro\\Desktop\\memo.txt
-AKIAIOSFODNN7EXAMPLE
-";
-        let r = mask_text(&Config::default(), text);
-        for secret in ["ichiro.suzuki", "田中", "10.20.30.40", "db01.prod.internal", "Hunter2!", "4111", "1234 5678 9018", "架空町", "AKIAIOSFODNN7EXAMPLE", "サンプル商事"] {
-            assert!(!r.output.contains(secret), "{secret} leaked:\n{}", r.output);
-        }
-        assert!(!r.output.contains("\\ichiro\\"), "{}", r.output);
-    }
-}
+#[path = "tests/engine.rs"]
+mod tests;

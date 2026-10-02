@@ -4491,9 +4491,9 @@ SOFTWARE.
 ------------------------------------------------------------------------------
 MIT License
 Used by:
-  - sumiveil-cli 1.0.0
-  - sumiveil-core 1.0.0
-  - sumiveil-gui 1.0.0
+  - sumiveil-cli 1.0.1
+  - sumiveil-core 1.0.1
+  - sumiveil-gui 1.0.1
   - accesskit 0.24.1
   - accesskit_consumer 0.35.0
   - accesskit_windows 0.32.1

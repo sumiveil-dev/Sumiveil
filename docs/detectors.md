@@ -21,7 +21,7 @@
 |---|---|---|:---:|---:|---|
 | `person_name` | 人名<br><sub>Person name</sub> | `NAME` | ✓ | 40 | `山田太郎様、お世話になっております。` |
 | `address_jp` | 住所 (都道府県から)<br><sub>Address (Japan, with prefecture)</sub> | `ADDRESS` | ✓ | 58 | `東京都千代田区架空町1丁目2-3 サンプルビル5F` |
-| `address_jp_city` | 住所 (市区町村から)<br><sub>Address (Japan, city + block number)</sub> | `ADDRESS` | ✓ | 56 | `横浜市中区山下町1-2-3` |
+| `address_jp_city` | 住所 (市区町村から)<br><sub>Address (Japan, city + block number)</sub> | `ADDRESS` | ✓ | 56 | `横浜市中区架空町1-2-3` |
 | `address_en` | 住所 (英語表記)<br><sub>Street address (English)</sub> | `ADDRESS` | ✓ | 55 | `Ship to 1600 Example Avenue, Suite 12` |
 | `birthdate` | 生年月日<br><sub>Date of birth</sub> | `BIRTHDATE` | ✓ | 57 | `生年月日: 1985年4月1日` |
 | `date` | 日付 (すべて)<br><sub>Date (any)</sub> | `DATE` |  | 30 | `2024/03/15 に実施` |
@@ -33,7 +33,7 @@
 | ID | 名前 | ラベル | 既定 | 優先度 | 例 |
 |---|---|---|:---:|---:|---|
 | `my_number` | マイナンバー (個人番号)<br><sub>My Number (individual number)</sub> | `MY_NUMBER` | ✓ | 80 | `マイナンバー: 1234 5678 9018` |
-| `corporate_number` | 法人番号・インボイス登録番号<br><sub>Corporate number / Invoice registration no.</sub> | `CORP_NUMBER` | ✓ | 78 | `登録番号 T7000012050002` |
+| `corporate_number` | 法人番号・インボイス登録番号<br><sub>Corporate number / Invoice registration no.</sub> | `CORP_NUMBER` | ✓ | 78 | `登録番号 T7123456789012` |
 | `drivers_license_jp` | 運転免許証番号<br><sub>Driver's license number (Japan)</sub> | `DRIVERS_LICENSE` | ✓ | 80 | `運転免許証番号 301234567890` |
 | `passport_jp` | パスポート番号<br><sub>Passport number (Japan)</sub> | `PASSPORT` | ✓ | 80 | `パスポート番号: TK1234567` |
 | `residence_card_jp` | 在留カード番号<br><sub>Residence card number (Japan)</sub> | `RESIDENCE_CARD` | ✓ | 80 | `在留カード AB12345678CD` |

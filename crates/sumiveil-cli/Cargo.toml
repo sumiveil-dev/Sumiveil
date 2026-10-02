@@ -20,6 +20,7 @@ clap = { version = "4.6.7", features = ["derive", "wrap_help"] }
 clap_complete = "4.6.11"
 globset = "0.4.20"
 sumiveil-core = { path = "../sumiveil-core" }
+serde = "1.0.229"
 serde_json = "1.0.151"
 toml = "1.1.6"
 walkdir = "2.5.0"

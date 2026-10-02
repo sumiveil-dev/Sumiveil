@@ -2,6 +2,7 @@
 
 use std::sync::{Arc, OnceLock};
 
+use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 use regex::Regex;
 
 use crate::catalog::{Boundary, ContextSpec, RegexSpec, SpecKind, CATALOG, PREFECTURES};
@@ -68,35 +69,92 @@ pub fn warm_up() {
 pub struct RegexDetector {
     regexes: Compiled,
     spec: RegexSpec,
+    /// 文脈語が必須の検出器で使う、文脈語の検索 (本文全体ではなく文脈語の近くだけを調べるため)
+    keywords: Option<Arc<AhoCorasick>>,
 }
 
 impl RegexDetector {
     pub fn from_catalog(index: usize) -> Option<Self> {
         match &CATALOG[index].kind {
-            SpecKind::Regex(spec) => Some(Self { regexes: compiled(index, spec), spec: *spec }),
+            SpecKind::Regex(spec) => Some(Self { regexes: compiled(index, spec), spec: *spec, keywords: keyword_matcher(index, spec) }),
             _ => None,
         }
     }
-}
 
-impl Detect for RegexDetector {
-    fn detect(&self, text: &str, out: &mut Vec<RawMatch>) {
+    fn scan(&self, text: &str, from: usize, to: usize, out: &mut Vec<RawMatch>) {
+        let part = &text[from..to];
         for (re, base, has_v) in self.regexes.iter() {
             if *has_v {
-                for caps in re.captures_iter(text) {
+                for caps in re.captures_iter(part) {
                     let m = caps.name("v").or_else(|| caps.get(0)).unwrap();
-                    consider(&self.spec, text, m.start(), m.end(), *base, out);
+                    consider(&self.spec, text, from + m.start(), from + m.end(), *base, out);
                 }
             } else {
-                for m in re.find_iter(text) {
-                    consider(&self.spec, text, m.start(), m.end(), *base, out);
+                for m in re.find_iter(part) {
+                    consider(&self.spec, text, from + m.start(), from + m.end(), *base, out);
                 }
             }
         }
     }
 }
 
-fn consider(spec: &RegexSpec, text: &str, s: usize, mut e: usize, base: f32, out: &mut Vec<RawMatch>) {
+/// 文脈語が必須で、検証で文脈を省けない (validator が無い) 検出器だけ、文脈語の検索を用意する。
+fn keyword_matcher(index: usize, spec: &RegexSpec) -> Option<Arc<AhoCorasick>> {
+    static CACHE: OnceLock<Vec<OnceLock<Option<Arc<AhoCorasick>>>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| CATALOG.iter().map(|_| OnceLock::new()).collect());
+    cache[index]
+        .get_or_init(|| {
+            let ctx = spec.context.filter(|c| c.required && spec.validator.is_none())?;
+            AhoCorasickBuilder::new().ascii_case_insensitive(true).build(ctx.keywords).ok().map(Arc::new)
+        })
+        .clone()
+}
+
+/// 一致 1 件の長さの上限の目安 (文字数)。文脈語の近くを調べる範囲に足す。
+const MAX_MATCH_CHARS: usize = 80;
+
+/// 文脈語の前後で、一致が入りうる範囲 (重なりはまとめる)。範囲の端は空白・改行まで広げ、一致の途中で切らないようにする。
+fn context_regions(text: &str, ac: &AhoCorasick, ctx: &ContextSpec) -> Vec<(usize, usize)> {
+    let widen_back = |i: usize| {
+        let p = back_chars(text, i, ctx.after + MAX_MATCH_CHARS);
+        text[..p].rfind(char::is_whitespace).map_or(0, |w| w)
+    };
+    let widen_fwd = |i: usize| {
+        let p = forward_chars(text, i, ctx.before + MAX_MATCH_CHARS);
+        text[p..].find(char::is_whitespace).map_or(text.len(), |w| p + w)
+    };
+    let mut regions: Vec<(usize, usize)> = vec![];
+    for m in ac.find_iter(text) {
+        let (from, to) = (widen_back(m.start()), widen_fwd(m.end()));
+        match regions.last_mut() {
+            Some(last) if from <= last.1 => last.1 = last.1.max(to),
+            _ => regions.push((from, to)),
+        }
+    }
+    regions
+}
+
+impl Detect for RegexDetector {
+    fn detect(&self, text: &str, out: &mut Vec<RawMatch>) {
+        match (&self.keywords, &self.spec.context) {
+            (Some(ac), Some(ctx)) => {
+                for (from, to) in context_regions(text, ac, ctx) {
+                    self.scan(text, from, to, out);
+                }
+            }
+            _ => self.scan(text, 0, text.len(), out),
+        }
+    }
+}
+
+fn consider(spec: &RegexSpec, text: &str, s: usize, e: usize, base: f32, out: &mut Vec<RawMatch>) {
+    let (s, mut e) = match spec.refine {
+        Some(f) => match f(text, s, e) {
+            Some(r) => r,
+            None => return,
+        },
+        None => (s, e),
+    };
     if spec.trim_punct {
         while e > s {
             let c = text[..e].chars().next_back().unwrap();
@@ -132,14 +190,51 @@ fn consider(spec: &RegexSpec, text: &str, s: usize, mut e: usize, base: f32, out
 pub(crate) fn context_found(text: &str, s: usize, e: usize, ctx: &ContextSpec) -> bool {
     let from = back_chars(text, s, ctx.before);
     let to = forward_chars(text, e, ctx.after);
-    let window = text[from..to].to_lowercase();
-    ctx.keywords.iter().any(|k| window.contains(k))
+    let window = text[from..to].as_bytes();
+    // 文脈語は小文字で書く決まり。英字だけ大文字・小文字を区別せずに比べる (範囲を小文字にした文字列は作らない)
+    ctx.keywords.iter().any(|k| {
+        let k = k.as_bytes();
+        k.len() <= window.len() && window.windows(k.len()).any(|w| w.eq_ignore_ascii_case(k))
+    })
 }
 
 fn is_word(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_'
 }
 
+fn is_katakana(c: char) -> bool {
+    ('\u{30A1}'..='\u{30FA}').contains(&c) || ('\u{FF66}'..='\u{FF9D}').contains(&c)
+}
+
+/// 英字の直後でも区切りとみなす項目名 (小文字)。「TEL03-1234-5678」「IP192.168.0.1」
+const DIGIT_LABELS: &[&str] = &["tel", "fax", "phone", "mobile", "mob", "cell"];
+const IP_LABELS: &[&str] = &["ip", "ipv4", "ipaddr", "addr"];
+
+/// 位置 `s` の直前が「項目名の英字だけの語」か (「TEL」の後ろの数字など)。
+fn after_label(text: &str, s: usize, labels: &[&str]) -> bool {
+    let head = &text[..s];
+    let word_start = head.rfind(|c: char| !c.is_ascii_alphabetic()).map_or(0, |i| i + head[i..].chars().next().map_or(1, char::len_utf8));
+    let word = &head[word_start..];
+    !word.is_empty() && labels.iter().any(|l| word.eq_ignore_ascii_case(l))
+}
+
+/// 位置 `e` の直後が「項目名の英字だけの語」か (「…5678FAX03-…」の「FAX」)。
+fn before_label(text: &str, e: usize, labels: &[&str]) -> bool {
+    let tail = &text[e..];
+    let end = tail.find(|c: char| !c.is_ascii_alphabetic()).unwrap_or(tail.len());
+    end > 0 && labels.iter().any(|l| tail[..end].eq_ignore_ascii_case(l))
+}
+
+/// 長音「ー」がカタカナの語の一部か (「センター」「ナンバー」の後ろの数字は区切られているとみなす)。
+fn long_vowel_of_word(text: &str, at: usize, before: bool) -> bool {
+    let neighbor = if before { char_before(text, at) } else { char_after(text, at) };
+    let Some(c) = neighbor.filter(|c| matches!(c, 'ー' | 'ｰ')) else { return false };
+    let beyond = if before { char_before(text, at - c.len_utf8()) } else { char_after(text, at + c.len_utf8()) };
+    beyond.is_some_and(is_katakana)
+}
+
+/// 前後の境界の判定。前・後の文字がそれぞれ「隣に来てはいけない文字」でないこと。
+/// 例外 (カタカナ語の長音、英字の項目名) は表のように並べて足す。
 pub(crate) fn boundary_ok(text: &str, s: usize, e: usize, b: Boundary) -> bool {
     let before = char_before(text, s);
     let after = char_after(text, e);
@@ -148,23 +243,19 @@ pub(crate) fn boundary_ok(text: &str, s: usize, e: usize, b: Boundary) -> bool {
         Boundary::Alnum => !before.is_some_and(is_word) && !after.is_some_and(is_word),
         Boundary::Digit => {
             let bad = |c: char| is_digit_like(c) || c.is_ascii_alphabetic() || is_hyphen_like(c) || c == '_';
-            !before.is_some_and(bad) && !after.is_some_and(bad)
+            let before_ok = !before.is_some_and(bad) || long_vowel_of_word(text, s, true) || after_label(text, s, DIGIT_LABELS);
+            let after_ok = !after.is_some_and(bad) || long_vowel_of_word(text, e, false) || before_label(text, e, DIGIT_LABELS);
+            before_ok && after_ok
         }
         Boundary::Ip => {
-            if before.is_some_and(|c| is_word(c) || c == '-') || after.is_some_and(|c| is_word(c) || c == '-') {
+            let bad = |c: char| is_word(c) || c == '-';
+            if before.is_some_and(bad) && !after_label(text, s, IP_LABELS) || after.is_some_and(bad) {
                 return false;
             }
-            if before == Some('.') {
-                if char_before(text, s - 1).is_some_and(|c| c.is_ascii_alphanumeric()) {
-                    return false;
-                }
-            }
-            if after == Some('.') {
-                if char_after(text, e + 1).is_some_and(|c| c.is_ascii_alphanumeric()) {
-                    return false;
-                }
-            }
-            true
+            // 「1.2.3.4.5」のように数字の並びの途中なら不採用 (「No.192.168.0.1」の「No.」は区切り)
+            let dotted_before = char_before(text, s - before.map_or(0, char::len_utf8)).is_some_and(|c| c.is_ascii_digit());
+            let dotted_after = char_after(text, e + after.map_or(0, char::len_utf8)).is_some_and(|c| c.is_ascii_alphanumeric());
+            !(before == Some('.') && dotted_before || after == Some('.') && dotted_after)
         }
         Boundary::Hex => {
             let bad = |c: char| is_word(c) || c == ':';
@@ -178,72 +269,5 @@ pub(crate) fn boundary_ok(text: &str, s: usize, e: usize, b: Boundary) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn all_catalog_regexes_compile() {
-        warm_up();
-    }
-
-    #[test]
-    fn catalog_examples_are_detected() {
-        for (i, d) in CATALOG.iter().enumerate() {
-            if let Some(det) = RegexDetector::from_catalog(i) {
-                let mut out = vec![];
-                det.detect(d.example, &mut out);
-                assert!(!out.is_empty(), "example for {} not detected: {:?}", d.id, d.example);
-            }
-        }
-    }
-
-    fn run(id: &str, text: &str) -> Vec<String> {
-        let i = CATALOG.iter().position(|d| d.id == id).unwrap();
-        let det = RegexDetector::from_catalog(i).unwrap();
-        let mut out = vec![];
-        det.detect(text, &mut out);
-        out.iter().map(|m| text[m.start..m.end].to_string()).collect()
-    }
-
-    #[test]
-    fn phone_variants() {
-        assert_eq!(run("phone_jp", "電話 03(1234)5678 まで"), vec!["03(1234)5678"]);
-        assert_eq!(run("phone_jp", "携帯０９０－１２３４－５６７８です"), vec!["０９０－１２３４－５６７８"]);
-        assert!(run("phone_jp", "注文番号 0901234567890123").is_empty());
-        assert_eq!(run("phone_jp", "+81 90-1234-5678"), vec!["+81 90-1234-5678"]);
-    }
-
-    #[test]
-    fn ip_boundaries() {
-        assert_eq!(run("ipv4", "host 10.0.0.1."), vec!["10.0.0.1"]);
-        assert!(run("ipv4", "ver 1.2.3.4.5").is_empty());
-        assert_eq!(run("ipv4", "net 10.1.0.0/16 ok"), vec!["10.1.0.0/16"]);
-    }
-
-    #[test]
-    fn password_kv_values() {
-        assert_eq!(run("password_kv", "DB_PASSWORD=hunter2"), vec!["hunter2"]);
-        assert_eq!(run("password_kv", "\"password\": \"s3cr3t\""), vec!["s3cr3t"]);
-        assert!(run("password_kv", "password=${DB_PASS}").is_empty());
-        assert!(run("password_kv", "bypass=1").is_empty());
-    }
-
-    #[test]
-    fn context_required() {
-        assert!(run("drivers_license_jp", "注文 301234567890").is_empty());
-        assert_eq!(run("drivers_license_jp", "免許証番号: 301234567890"), vec!["301234567890"]);
-    }
-
-    #[test]
-    fn hostname_not_filenames() {
-        assert!(run("hostname", "open report.docx and main.rs").is_empty());
-        assert!(run("hostname", "photo.jpg").is_empty());
-        assert_eq!(run("hostname", "see api.corp.example.co.jp/x"), vec!["api.corp.example.co.jp"]);
-    }
-
-    #[test]
-    fn windows_path_user() {
-        assert_eq!(run("windows_user_path", r"C:\Users\taro\Desktop"), vec!["taro"]);
-        assert!(run("windows_user_path", r"C:\Users\Public\x").is_empty());
-    }
-}
+#[path = "tests/detector.rs"]
+mod tests;

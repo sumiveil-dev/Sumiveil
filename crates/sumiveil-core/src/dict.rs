@@ -52,12 +52,10 @@ fn lines(s: &'static str) -> impl Iterator<Item = &'static str> {
     s.lines().map(str::trim).filter(|l| !l.is_empty())
 }
 
+/// 漢字 (姓の途中のヶを含む)。
 fn is_han(c: char) -> bool {
-    matches!(c, '\u{4E00}'..='\u{9FFF}' | '\u{3400}'..='\u{4DBF}' | '\u{F900}'..='\u{FAFF}' | '々' | 'ヶ')
+    crate::text::is_han(c) || c == 'ヶ'
 }
-
-/// 人名の直前・区切りとして扱う漢字 (組織・役職の末尾など)。
-const SPLIT_CHARS: &str = "部課係室社局店所班科会団省庁当者先宛各御貴弊様殿氏";
 
 /// 辞書にない姓の候補に含まれていたら姓とみなさない字 (組織・役職・文法的な語に多いもの)。
 /// 辞書の名のうち一般語でもあるもの (文脈のない「珍しい姓 + 名」の判定では名とみなさない)。
@@ -75,6 +73,25 @@ const MAJOR_PLACES: &[&str] = &[
     "札幌", "仙台", "横浜", "川崎", "名古屋", "神戸", "北九州", "那覇", "関東", "関西", "東北", "九州", "四国", "中部", "近畿", "北陸",
     "東海", "山陰", "山陽", "首都", "都内", "県内", "市内", "国内", "海外", "中国", "韓国", "米国", "英国", "台湾", "香港", "欧州",
 ];
+
+/// 文章によく出る大きな地名か (姓と同じ表記でも、文脈のない姓としては扱わない)。
+pub fn is_major_place(s: &str) -> bool {
+    MAJOR_PLACES.contains(&s)
+}
+
+/// [s, e) の語が、人名を書くような位置にあるか (一般語の「入場して」「出口から」などを除くため)。
+/// 行にその語だけ / 行末で、前が空白か「の」/ 後ろが「です」「でした」「と申します」「宛」。
+fn name_like_position(text: &str, s: usize, e: usize) -> bool {
+    let line_start = text[..s].rfind('\n').map_or(0, |i| i + 1);
+    let line_end = text[e..].find(['\r', '\n']).map_or(text.len(), |i| e + i);
+    let before = text[line_start..s].trim_end_matches([' ', '　']);
+    let after = &text[e..line_end];
+    let at_end = after.trim_start_matches([' ', '　']).trim_end_matches(['。', '.', '、', ',', ' ', '　']).is_empty();
+    let spaced = text[line_start..s].ends_with([' ', '　', '\t']);
+    before.is_empty() && at_end
+        || at_end && (spaced || before.ends_with('の'))
+        || ["です", "でした", "と申します", "宛"].iter().any(|w| after.starts_with(w))
+}
 
 /// (後半は「〜の件」「予定」「新規」などの一般語の字)
 const NOT_SURNAME_CHARS: &str = "事業社所部課係室局店班科会団院校園省庁署員者人長師士様殿氏的性化型式用等及並又其此彼何毎各全諸第約計件予定済可否無非未再新旧最超";
@@ -159,6 +176,21 @@ impl NameDict {
         self.is_jp_surname(s) || self.is_surname_like(s)
     }
 
+    /// 「姓 + 名」がちょうど辞書の姓と名に分けられるか (姓・名とも 1〜4 文字、全体で 3 文字以上)。
+    pub fn is_full_name(&self, s: &str) -> bool {
+        self.split_full_name(s).is_some()
+    }
+
+    /// 「姓 + 名」に分けられれば、名の文字数 (名の長いほうの分け方を優先)。
+    pub fn split_full_name(&self, s: &str) -> Option<usize> {
+        let idx: Vec<usize> = s.char_indices().map(|x| x.0).collect();
+        let n = idx.len();
+        if !(3..=8).contains(&n) {
+            return None;
+        }
+        (1..n).filter(|&k| k <= 4 && n - k <= 4).find(|&k| self.is_jp_surname(&s[..idx[k]]) && self.is_jp_given(&s[idx[k]..])).map(|k| n - k)
+    }
+
     /// 先頭 1〜4 文字のいずれかが姓として辞書にあるか。
     pub fn starts_with_surname(&self, s: &str) -> bool {
         let chars: Vec<(usize, char)> = s.char_indices().collect();
@@ -180,10 +212,30 @@ impl NameDict {
 
     /// 敬称なしの人名候補 (開始, 終了, 信頼度)。
     pub fn scan_names(&self, text: &str) -> Vec<(usize, usize, f32)> {
-        let mut out = vec![];
-        self.scan_jp(text, &mut out);
-        self.scan_en(text, &mut out);
-        self.scan_romaji(text, &mut out);
+        // 日本語・英語・ローマ字の走査は独立なので並行して行う
+        let (mut out, (en, romaji)) = rayon::join(
+            || {
+                let mut v = vec![];
+                self.scan_jp(text, &mut v);
+                v
+            },
+            || {
+                rayon::join(
+                    || {
+                        let mut v = vec![];
+                        self.scan_en(text, &mut v);
+                        v
+                    },
+                    || {
+                        let mut v = vec![];
+                        self.scan_romaji(text, &mut v);
+                        v
+                    },
+                )
+            },
+        );
+        out.extend(en);
+        out.extend(romaji);
         out
     }
 
@@ -226,12 +278,61 @@ impl NameDict {
         }
     }
 
+    /// 敬称・項目名の無い姓。
+    /// - 姓の並び (「田中・佐藤・鈴木」) で、前後に人を表す語 (「の 3 名」「出席者」など) がある: 0.75。語が無ければ 0.45 (使わない。「森林・平野・山地」のような一般語の並びがあるため)
+    /// - 姓だけが、人名を書く位置にある (行に姓だけ・行末の空白の後・「〜です」・行末の「〜の田中」): 0.5
+    ///
+    /// 辞書の姓には「森林」「平野」「出口」のような一般語も多いので、文脈の無いものは低い信頼度にする。
+    /// 既定のしきい値 (0.6) では使われず、strict プロファイル (0.5) で使われる。大きな地名 (「東京」など) は除く。
+    fn scan_jp_lists_and_bare(&self, text: &str, runs: &[(usize, usize)], out: &mut Vec<(usize, usize, f32)>) {
+        let is_item = |s: usize, e: usize| {
+            let w = &text[s..e];
+            let n = w.chars().count();
+            (2..=4).contains(&n) && self.is_jp_surname(w) && !is_major_place(w) || self.is_full_name(w)
+        };
+        let separated = |e: usize, s2: usize| {
+            let gap = text[e..s2].trim_matches([' ', '　']);
+            crate::lexicon::LIST_SEPARATORS.contains(&gap)
+        };
+        let mut i = 0;
+        while i < runs.len() {
+            let mut j = i;
+            while j < runs.len() && is_item(runs[j].0, runs[j].1) && (j == i || separated(runs[j - 1].1, runs[j].0)) {
+                j += 1;
+            }
+            if j - i >= 2 {
+                let (from, to) = (runs[i].0, runs[j - 1].1);
+                let before = &text[crate::text::back_chars(text, from, 10)..from];
+                let after = &text[to..crate::text::forward_chars(text, to, 10)];
+                let person = crate::lexicon::PERSON_CONTEXT_WORDS.iter().any(|w| before.contains(w) || after.contains(w));
+                for &(s, e) in &runs[i..j] {
+                    out.push((s, e, if person { 0.75 } else { 0.45 }));
+                }
+                i = j;
+                continue;
+            }
+            let (s, e) = runs[i];
+            let w = &text[s..e];
+            if (2..=4).contains(&w.chars().count()) && self.is_jp_surname(w) && !is_major_place(w) && name_like_position(text, s, e) {
+                out.push((s, e, 0.5));
+            }
+            i += 1;
+        }
+    }
+
     fn scan_jp(&self, text: &str, out: &mut Vec<(usize, usize, f32)>) {
         // 漢字の連続区間を列挙
         let mut runs: Vec<(usize, usize)> = vec![];
         let mut start: Option<usize> = None;
+        let mut prev: Option<char> = None;
         for (i, c) in text.char_indices() {
-            if is_han(c) && !SPLIT_CHARS.contains(c) {
+            // 「1日佐々木美咲」の「日」は日付の字なので人名の並びに含めない
+            let date_unit = start.is_none() && prev.is_some_and(crate::text::is_digit_like) && crate::lexicon::DATE_UNIT_CHARS.contains(c);
+            prev = Some(c);
+            if date_unit {
+                continue;
+            }
+            if is_han(c) && !crate::lexicon::is_name_split_char(c) {
                 start.get_or_insert(i);
             } else if let Some(s) = start.take() {
                 runs.push((s, i));
@@ -240,6 +341,7 @@ impl NameDict {
         if let Some(s) = start {
             runs.push((s, text.len()));
         }
+        self.scan_jp_lists_and_bare(text, &runs, out);
         for (idx, &(s, e)) in runs.iter().enumerate() {
             let seg = &text[s..e];
             let n = seg.chars().count();
@@ -265,15 +367,25 @@ impl NameDict {
             if (3..=7).contains(&n) {
                 let idxs: Vec<usize> = seg.char_indices().map(|x| x.0).collect();
                 let mut best: Option<f32> = None;
-                for split in 2..n {
+                for split in 1..n {
                     let sur = &seg[..idxs[split]];
                     let giv = &seg[idxs[split]..];
                     let gn = n - split;
                     if split > 4 || gn > 4 {
                         continue;
                     }
+                    // 1 文字の姓 (林・森など) は、名が 2 文字以上の辞書の名のときだけ (「林太郎」「森陽子」)
+                    if split == 1 && (gn < 2 || !crate::lexicon::SINGLE_CHAR_SURNAMES.contains(sur)) {
+                        continue;
+                    }
                     let conf = if self.is_jp_surname(sur) && self.is_jp_given(giv) {
-                        if gn >= 2 { 0.68 } else { 0.55 }
+                        if split == 1 {
+                            0.6
+                        } else if gn >= 2 {
+                            0.68
+                        } else {
+                            0.55
+                        }
                     } else if (2..=3).contains(&gn) && self.rare_full_name(sur, giv) {
                         // 辞書にない珍しい姓 + 辞書の名 (「月見里花子」など)。区切りがない分、少し低くする
                         0.6
@@ -382,63 +494,5 @@ impl Detect for PlaceDetector {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn names(text: &str) -> Vec<(String, f32)> {
-        let d = NameDict::get();
-        let mut v: Vec<(String, f32)> = d.scan_names(text).into_iter().map(|(s, e, c)| (text[s..e].to_string(), c)).collect();
-        v.sort_by(|a, b| a.0.cmp(&b.0));
-        v
-    }
-
-    #[test]
-    fn jp_full_names() {
-        let v = names("本日は山田太郎が出席、佐藤 花子も参加");
-        let got: Vec<&str> = v.iter().filter(|x| x.1 >= 0.6).map(|x| x.0.as_str()).collect();
-        assert!(got.contains(&"山田太郎"), "{v:?}");
-        assert!(got.contains(&"佐藤 花子"), "{v:?}");
-    }
-
-    #[test]
-    fn jp_common_words_not_names() {
-        let v = names("本日の会議室は情報管理部で東京都庁の予定");
-        assert!(v.iter().all(|x| x.1 < 0.6), "{v:?}");
-    }
-
-    #[test]
-    fn rare_surnames_with_known_given_names() {
-        let d = NameDict::get();
-        // 辞書にない珍しい姓 (テストの前提を確認)
-        for s in ["月見里", "五百旗頭"] {
-            assert!(!d.is_jp_surname(s) && d.is_surname_like(s), "{s}");
-        }
-        let v = names("月見里花子が来社、五百旗頭 太郎さんから電話");
-        let got: Vec<&str> = v.iter().filter(|x| x.1 >= 0.6).map(|x| x.0.as_str()).collect();
-        assert!(got.contains(&"月見里花子") && got.contains(&"五百旗頭 太郎"), "{v:?}");
-        // 一般語 + 名に見える語 (「新規」「予定」など) は姓らしいとみなさない
-        for w in ["新規", "予定", "会議室", "事業部", "第一", "各位"] {
-            assert!(!d.is_surname_like(w), "{w}");
-        }
-        // 地名・日付 + 名、一般語でもある名 (未来・勝利・昭和) は文脈がなければ人名にしない
-        let v = names("北海道大地を走る。日本未来会議。本日 未来について。大阪純一郎ビル。生年月日 昭和");
-        assert!(v.iter().all(|x| x.1 < 0.6), "{v:?}");
-    }
-
-    #[test]
-    fn en_names() {
-        let v = names("Meeting with Robert Johnson and Will Power tomorrow");
-        let got: Vec<&str> = v.iter().filter(|x| x.1 >= 0.6).map(|x| x.0.as_str()).collect();
-        assert_eq!(got, vec!["Robert Johnson"]);
-    }
-
-    #[test]
-    fn places() {
-        let d = PlaceDetector::new();
-        let t = "横浜市在住で、新宿駅を利用";
-        let mut out = vec![];
-        d.detect(t, &mut out);
-        let got: Vec<&str> = out.iter().map(|m| &t[m.start..m.end]).collect();
-        assert!(got.contains(&"新宿駅"), "{got:?}");
-    }
-}
+#[path = "tests/dict.rs"]
+mod tests;

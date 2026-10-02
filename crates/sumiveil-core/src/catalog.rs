@@ -5,6 +5,7 @@
 //! - `{HC}` ハイフン類の文字クラス内容
 //! - `{PREF}` 都道府県名の選択肢
 
+use crate::refiners::{self as rf, Refiner};
 use crate::validators::{self as v, Validator};
 
 #[derive(Debug, Clone, Copy)]
@@ -68,6 +69,8 @@ pub struct RegexSpec {
     pub context: Option<ContextSpec>,
     /// 末尾の句読点 (`.,;:!?)` 等) を取り除く
     pub trim_punct: bool,
+    /// 正規表現では決められない範囲の調整 (前後のはみ出しを詰める)。境界・検証の前に適用する
+    pub refine: Option<Refiner>,
 }
 
 const R: RegexSpec = RegexSpec {
@@ -76,6 +79,7 @@ const R: RegexSpec = RegexSpec {
     validator: None,
     context: None,
     trim_punct: false,
+    refine: None,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -85,6 +89,8 @@ pub enum SpecKind {
     PersonName,
     /// 地名辞書 + 「市/区/駅/在住」等
     PlaceName,
+    /// 会社名・法人名 (法人格の語を起点に前後を読む。`company` モジュール)
+    Company,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -184,7 +190,13 @@ pub static CATALOG: &[DetectorSpec] = &[
         name_en: "Email address", name_ja: "メールアドレス",
         default_enabled: true, priority: 60,
         kind: SpecKind::Regex(RegexSpec {
-            patterns: &[(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?)*\.[A-Za-z]{2,24}", 0.95)],
+            patterns: &[
+                (r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?)*\.[A-Za-z]{2,24}", 0.95),
+                // 全角の英数字・＠・．を含むもの (「ｔａｎａｋａ＠…」「tanaka＠…」)
+                (r"[A-Za-z0-9Ａ-Ｚａ-ｚ０-９._%+\-．＿－＋]+(?:＠[A-Za-z0-9Ａ-Ｚａ-ｚ０-９\-－]+(?:[.．][A-Za-z0-9Ａ-Ｚａ-ｚ０-９\-－]+)*[.．][A-Za-zＡ-Ｚａ-ｚ]{2,24}|@[A-Za-z0-9\-]*[Ａ-Ｚａ-ｚ０-９．][A-Za-z0-9Ａ-Ｚａ-ｚ０-９\-－.．]*[.．][A-Za-zＡ-Ｚａ-ｚ]{2,24})", 0.9),
+                // URL エンコード (%40) と、@ を (at) [at] に置き換えた書き方
+                (r"[A-Za-z0-9._+\-]+(?:%40|[ ]?[(\[]at[)\]][ ]?)[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?)*\.[A-Za-z]{2,24}", 0.85),
+            ],
             ..R
         }),
         example: "連絡先: taro.yamada@corp.example.co.jp まで",
@@ -210,6 +222,7 @@ pub static CATALOG: &[DetectorSpec] = &[
             patterns: &[(r"\+(?:[1-79]|8[02-9])[0-9]{0,2}[ \-.]?\(?[0-9]{1,4}\)?(?:[ \-.]?[0-9]{2,4}){2,4}", 0.85)],
             boundary: Boundary::Digit,
             validator: Some(v::phone_intl),
+            refine: Some(rf::phone_trailing_group),
             ..R
         }),
         example: "Call +1 415-555-0132",
@@ -222,6 +235,8 @@ pub static CATALOG: &[DetectorSpec] = &[
             patterns: &[
                 (r"〒[ 　]?[{DC}]{3}[{HC}]?[{DC}]{4}", 0.95),
                 (r"[{DC}]{3}[{HC}][{DC}]{4}", 0.6),
+                // 「郵便番号1234567」(ハイフン無し。項目名があるときだけ)
+                (r"郵便番号[ 　]*[:：]?[ 　]*(?P<v>[{DC}]{7})", 0.85),
             ],
             boundary: Boundary::Digit,
             context: ctx(&["郵便", "〒", "住所", "zip", "postal"], false),
@@ -243,7 +258,7 @@ pub static CATALOG: &[DetectorSpec] = &[
         default_enabled: true, priority: 58,
         kind: SpecKind::Regex(RegexSpec {
             patterns: &[(r"(?:{PREF})[^\s、。,，「」『』()（）<>]{1,25}?(?:[{DC}]{1,4}|[一二三四五六七八九十]{1,3})(?:(?:丁目|番地|番|号|[{HC}]|の)(?:[{DC}]{1,4}|[一二三四五六七八九十]{1,3})?){0,4}(?:号)?(?:[ 　]?[^\s、。,，]{1,20}?(?:ビル|マンション|ハイツ|コーポ|アパート|荘|タワー|レジデンス|ハウス|ヒルズ)(?:[ 　]?[{DC}]{1,4}(?:階|F|号室)?)?)?", 0.9)],
-            validator: Some(v::has_digit),
+            validator: Some(v::address_jp),
             ..R
         }),
         example: "東京都千代田区架空町1丁目2-3 サンプルビル5F",
@@ -253,17 +268,22 @@ pub static CATALOG: &[DetectorSpec] = &[
         name_en: "Address (Japan, city + block number)", name_ja: "住所 (市区町村から)",
         default_enabled: true, priority: 56,
         kind: SpecKind::Regex(RegexSpec {
-            patterns: &[(r"[\p{Han}\p{Katakana}ヶケ]{1,5}[市区町村郡][\p{Han}\p{Katakana}\p{Hiragana}ヶケ々]{0,10}?(?:[{DC}]{1,4}|[一二三四五六七八九十]{1,3})(?:丁目|番地|[{HC}])(?:[{DC}]{1,4}|[一二三四五六七八九十]{1,3})(?:(?:番|号|[{HC}])(?:[{DC}]{1,4})?){0,2}(?:号)?", 0.75)],
+            patterns: &[(r"[\p{Han}\p{Katakana}ヶケ]{1,5}[市区町村郡][\p{Han}\p{Katakana}\p{Hiragana}ヶケ々]{0,10}?(?:[{DC}]{1,4}|[一二三四五六七八九十]{1,3})(?:丁目|番地|[{HC}])(?:[{DC}]{1,4}|[一二三四五六七八九十]{1,3})(?:(?:番|号|[{HC}])(?:[{DC}]{1,4}|[一二三四五六七八九十]{1,3})?){0,2}(?:号)?", 0.75)],
+            refine: Some(rf::city_leading_place),
             ..R
         }),
-        example: "横浜市中区山下町1-2-3",
+        example: "横浜市中区架空町1-2-3",
     },
     DetectorSpec {
         id: "address_en", category: "personal", label: "ADDRESS", label_ja: "住所",
         name_en: "Street address (English)", name_ja: "住所 (英語表記)",
         default_enabled: true, priority: 55,
         kind: SpecKind::Regex(RegexSpec {
-            patterns: &[(r"[0-9]{1,5}\s(?:[A-Z][a-z]+\s){1,3}(?:Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Boulevard|Blvd\.?|Lane|Ln\.?|Drive|Dr\.?|Court|Ct\.?|Way|Place|Pl\.?)(?:,?\s(?:Apt|Suite|Unit)\.?\s?[A-Za-z0-9\-]+)?", 0.75)],
+            patterns: &[
+                (r"[0-9]{1,5}\s(?:[A-Z][a-z]+\s){1,3}(?:Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Boulevard|Blvd\.?|Lane|Ln\.?|Drive|Dr\.?|Court|Ct\.?|Way|Place|Pl\.?)(?:,?\s(?:Apt|Suite|Unit)\.?\s?[A-Za-z0-9\-]+)?", 0.75),
+                // 日本の住所のローマ字表記 (「1-2-3 Sakuradai, Kaku-shi, Tokyo 123-4567」)。「-shi」「-ku」などの区切りがあるものだけ
+                (r"[0-9]{1,4}(?:-[0-9]{1,4}){1,3},?\s[A-Z][A-Za-z]+(?:,?\s[A-Z][A-Za-z]+){0,3},?\s[A-Z][A-Za-z]+-(?:shi|ku|cho|machi|mura|gun)(?:,?\s[A-Z][A-Za-z]+(?:-(?:to|fu|ken))?){0,2}(?:,?\s[0-9]{3}-[0-9]{4})?", 0.75),
+            ],
             boundary: Boundary::Digit,
             ..R
         }),
@@ -276,7 +296,7 @@ pub static CATALOG: &[DetectorSpec] = &[
         kind: SpecKind::Regex(RegexSpec {
             patterns: DATE_PATTERNS,
             boundary: Boundary::Digit,
-            context: ctx(&["生年月日", "誕生日", "生まれ", "birth", "dob", "born"], true),
+            context: ctx(&["生年月日", "誕生日", "生まれ", "日生", "birth", "dob", "born"], true),
             ..R
         }),
         example: "生年月日: 1985年4月1日",
@@ -338,7 +358,7 @@ pub static CATALOG: &[DetectorSpec] = &[
             context: ctx(&["法人番号", "登録番号", "インボイス", "適格請求書", "corporate number", "invoice"], true),
             ..R
         }),
-        example: "登録番号 T7000012050002",
+        example: "登録番号 T7123456789012",
     },
     DetectorSpec {
         id: "drivers_license_jp", category: "jp_id", label: "DRIVERS_LICENSE", label_ja: "運転免許証番号",
@@ -863,7 +883,7 @@ pub static CATALOG: &[DetectorSpec] = &[
         default_enabled: true, priority: 90,
         kind: SpecKind::Regex(RegexSpec {
             patterns: &[
-                (r"(?im)(?:^|[^A-Za-z0-9])(?:password|passwd|pass_?word|pwd|passphrase|secret(?:_?key)?|api_?key|apikey|access_?token|auth_?token|client_?secret|private_?key)[\x22']?\s*[:=]\s*[\x22']?(?P<v>[^\s\x22',;]{1,200})", 0.85),
+                (r"(?im)(?:^|[^A-Za-z0-9])(?:password|passwd|pass_?word|pwd|passphrase|secret(?:_?key)?|api_?key|apikey|access_?token|auth_?token|client_?secret|private_?key)[\x22']?\s*[:=]\s*[\x22']?(?P<v>[^\s\x22',;\p{Hiragana}]{1,200})", 0.85),
                 // 「token」だけのキーは技術文書やソースコードに多い (「token: &str」「Token(0)」「token: 東京」) ので、
                 // トークンらしい値 (8 文字以上の英数字・記号で、区切りで終わる) のときだけ
                 (r"(?im)(?:^|[^A-Za-z0-9])token[\x22']?\s*[:=]\s*[\x22']?(?P<v>[A-Za-z0-9_\-.+/=]{8,200})(?:$|[\s\x22',;&)\]}])", 0.8),
@@ -878,7 +898,7 @@ pub static CATALOG: &[DetectorSpec] = &[
         name_en: "Password (Japanese label)", name_ja: "パスワード (日本語の項目名)",
         default_enabled: true, priority: 90,
         kind: SpecKind::Regex(RegexSpec {
-            patterns: &[(r"(?:パスワード|暗証番号|パスフレーズ|ＰＷ|ﾊﾟｽﾜｰﾄﾞ)[ 　]*(?:は|[:：=＝])[ 　]*[「\x22']?(?P<v>[^\s「」\x22'、。，,]{1,100})", 0.9)],
+            patterns: &[(r"(?:パスワード|暗証番号|パスフレーズ|ＰＷ|ﾊﾟｽﾜｰﾄﾞ)[ 　]*(?:は|[:：=＝])[ 　]*[「\x22']?(?P<v>[^\s「」\x22'、。，,\p{Hiragana}]{1,100})", 0.9)],
             validator: Some(not_placeholder),
             ..R
         }),
@@ -915,6 +935,7 @@ pub static CATALOG: &[DetectorSpec] = &[
         default_enabled: true, priority: 60,
         kind: SpecKind::Regex(RegexSpec {
             patterns: &[(r"\p{Han}{1,4}[ 　]?[{DC}]{2,3}[ 　]?\p{Hiragana}[ 　]?(?:[{DC}]{1,2}[{HC}][{DC}]{2}|[・･.]{1,3}[{DC}]{1,3})", 0.8)],
+            refine: Some(rf::drop_leading_date_unit),
             boundary: Boundary::Digit,
             ..R
         }),
@@ -932,14 +953,7 @@ pub static CATALOG: &[DetectorSpec] = &[
         id: "company_jp", category: "organization", label: "COMPANY", label_ja: "会社名",
         name_en: "Company name (Japanese)", name_ja: "会社名・法人名",
         default_enabled: true, priority: 42,
-        kind: SpecKind::Regex(RegexSpec {
-            patterns: &[
-                (r"(?:株式会社|有限会社|合同会社|合資会社|合名会社|一般社団法人|一般財団法人|公益社団法人|公益財団法人|特定非営利活動法人|NPO法人|医療法人|学校法人|社会福祉法人|独立行政法人|国立大学法人)[ 　]?[\p{Han}\p{Katakana}A-Za-zＡ-Ｚａ-ｚ0-9０-９ー・&＆]{1,20}", 0.85),
-                (r"[\p{Han}\p{Katakana}A-Za-zＡ-Ｚａ-ｚ0-9０-９ー・&＆]{1,20}[ 　]?(?:株式会社|有限会社|合同会社)", 0.8),
-                (r"(?:\(株\)|（株）|㈱|\(有\)|（有）|㈲)[\p{Han}\p{Katakana}A-Za-zＡ-Ｚａ-ｚー・]{1,20}", 0.8),
-            ],
-            ..R
-        }),
+        kind: SpecKind::Company,
         example: "株式会社サンプル商事 御中",
     },
     DetectorSpec {
@@ -956,15 +970,5 @@ pub static CATALOG: &[DetectorSpec] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ids_unique_and_categories_known() {
-        let mut ids = std::collections::HashSet::new();
-        for d in CATALOG {
-            assert!(ids.insert(d.id), "duplicate id {}", d.id);
-            assert!(category(d.category).is_some(), "unknown category {}", d.category);
-        }
-    }
-}
+#[path = "tests/catalog.rs"]
+mod tests;

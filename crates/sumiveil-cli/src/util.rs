@@ -139,6 +139,35 @@ pub fn write_stdout(bytes: &[u8]) -> Result<()> {
     }
 }
 
+/// JSON を整形して標準出力へ直接書く (全体を文字列にしてから書くと、大きな入力でメモリを倍以上使うため)。
+pub fn write_json_stdout<T: serde::Serialize>(value: &T) -> Result<()> {
+    let mut out = std::io::BufWriter::new(std::io::stdout().lock());
+    let r = serde_json::to_writer_pretty(&mut out, value)
+        .map_err(std::io::Error::from)
+        .and_then(|_| out.write_all(b"\n"))
+        .and_then(|_| out.flush());
+    match r {
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => std::process::exit(0),
+        r => r.context("stdout"),
+    }
+}
+
+/// JSON を整形してファイルへ直接書く。
+pub fn write_json_file<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
+    if let Some(dir) = path.parent() {
+        if !dir.as_os_str().is_empty() {
+            std::fs::create_dir_all(dir).with_context(|| dir.display().to_string())?;
+        }
+    }
+    let file = std::fs::File::create(path).with_context(|| path.display().to_string())?;
+    let mut out = std::io::BufWriter::new(file);
+    serde_json::to_writer_pretty(&mut out, value)
+        .map_err(std::io::Error::from)
+        .and_then(|_| out.write_all(b"\n"))
+        .and_then(|_| out.flush())
+        .with_context(|| path.display().to_string())
+}
+
 pub fn write_file(path: &Path, bytes: &[u8]) -> Result<()> {
     if let Some(dir) = path.parent() {
         if !dir.as_os_str().is_empty() {

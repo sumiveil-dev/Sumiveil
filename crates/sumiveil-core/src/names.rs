@@ -12,8 +12,9 @@ use regex::Regex;
 
 use crate::detector::{Detect, RawMatch};
 use crate::dict::NameDict;
+use crate::lexicon as lx;
 use crate::morph::{Morph, NounKind};
-use crate::text::char_after;
+use crate::text::{char_before, is_digit_like, is_han};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum RuleKind {
@@ -24,6 +25,12 @@ enum RuleKind {
     En,
     /// ローマ字の敬称 (「Tanaka-san」「Sato san」)
     Romaji,
+    /// 姓 + 役職 (「田中部長」)。辞書の姓のときだけ採る
+    JpTitleSuffix,
+    /// 役職・部署 + 姓 (「課長の田中」「営業部 田中」)。辞書の姓のときだけ採る
+    JpAfterTitle,
+    /// 姓 + 助詞 + 人の行動 (「田中が担当」「山本に連絡」)。辞書の姓のときだけ採る
+    JpSurnameAction,
 }
 
 struct Rule {
@@ -34,6 +41,21 @@ struct Rule {
 
 const JP_NAME_CHARS: &str = r"\p{Han}\p{Katakana}\p{Hiragana}ー々\x{FF66}-\x{FF9F}";
 
+/// 人名に使う漢字 (敬称の字「様・殿・氏」を除く)。正規表現の文字クラス。
+const HAN_NAME: &str = r"[\p{Han}々&&[^様殿氏]]";
+
+/// 語の一覧を正規表現の選択肢にする (長いものを先に)。
+fn alternation(words: &[&str]) -> String {
+    let mut w: Vec<&str> = words.to_vec();
+    w.sort_by_key(|s| std::cmp::Reverse(s.chars().count()));
+    w.iter().map(|s| regex::escape(s)).collect::<Vec<_>>().join("|")
+}
+
+/// 漢字の敬称の後ろに続くと熟語になる字の組 (「様式」「氏名」「殿堂」)。この場合は敬称ではない。
+const HONORIFIC_COMPOUNDS: &[&str] = &[
+    "様式", "様子", "様相", "様態", "様変", "氏名", "氏族", "氏神", "殿下", "殿堂", "殿方", "殿様", "君主", "君臨", "君子", "先生方", "先輩方",
+];
+
 fn rules() -> &'static [Rule] {
     static RULES: OnceLock<Vec<Rule>> = OnceLock::new();
     RULES.get_or_init(|| {
@@ -42,12 +64,13 @@ fn rules() -> &'static [Rule] {
             (
                 // 姓の途中のヶ・ケ・ノ (「一番ケ瀬」「千ノ木」) は漢字にはさまれたときだけ。
                 // 長い姓名 (「左衛門三郎花子様」= 5 + 2 文字) も先頭が欠けないよう、最大 8 文字まで
-                r"(?P<v>\p{Han}(?:[\p{Han}々]|[ヶケノ]\p{Han}){0,7}(?:[ 　]\p{Han}[\p{Han}々]{0,3}|[ 　]\p{Hiragana}{2,4})?|\p{Katakana}[\p{Katakana}ー]{1,9}(?:[ 　・=＝][\p{Katakana}ー]{2,10})?)[ 　]?(?P<h>様|さま|さん|くん|君|ちゃん|殿|氏|先生|先輩)".to_string(),
+                // 名前の漢字に敬称の字 (様・殿・氏) は含めない (「田中様佐藤様」を 2 人に分ける)
+                format!(r"(?P<v>{h}(?:{h}|[ヶケノ]{h}){{0,7}}(?:[ 　]{h}{h}{{0,3}}|[ 　]\p{{Hiragana}}{{2,4}})?|\p{{Katakana}}[\p{{Katakana}}ー]{{1,9}}(?:[ 　・=＝][\p{{Katakana}}ー]{{2,10}})?)[ 　]?(?P<h>様|さま|さん|くん|君|ちゃん|殿|氏|先生|先輩)", h = HAN_NAME),
                 0.75,
                 RuleKind::JpHonorific,
             ),
             (
-                format!(r"(?:氏名|名前|お名前|担当者名|担当者|担当|宛先|宛名|差出人|送信者|作成者|記入者|承認者|申請者|依頼者|契約者|代表者|受取人|名義人|口座名義|フルネーム|ご芳名|芳名|患者名|利用者名|顧客名|会員名|署名)[ 　]*[:：][ 　]*(?P<v>[{jp}]{{1,10}}(?:[ 　][{jp}]{{1,10}})?)"),
+                format!(r"(?:氏名|名前|お名前|担当者名|担当者|担当|宛先|宛名|差出人|送信者|作成者|記入者|承認者|申請者|依頼者|契約者|代表者|受取人|名義人|口座名義|フルネーム|ご芳名|芳名|患者名|利用者名|顧客名|会員名|署名)[ 　]*[:：][ 　]*(?P<v>[{jp}]{{1,20}}(?:[ 　][{jp}]{{1,10}})?)"),
                 0.85,
                 RuleKind::JpLabel,
             ),
@@ -57,7 +80,7 @@ fn rules() -> &'static [Rule] {
                 RuleKind::JpSelfIntro,
             ),
             (
-                r"(?:担当の|担当者の|営業の|窓口の|私、|私は|わたくし、|わたくしは)(?P<v>\p{Han}[\p{Han}々]{1,3})(?:です|が担当|が対応|より|から)".to_string(),
+                r"(?:担当の|担当者の|営業の|窓口の|担当は|担当者は|窓口は|私、|私は|わたくし、|わたくしは)(?P<v>\p{Han}[\p{Han}々]{1,3})(?:です|が担当|が対応|より|から)".to_string(),
                 0.75,
                 RuleKind::JpSelfIntro,
             ),
@@ -97,6 +120,23 @@ fn rules() -> &'static [Rule] {
                 0.8,
                 RuleKind::Romaji,
             ),
+            (
+                format!(r"(?P<v>{h}{{2,8}})(?P<h>{t})", h = HAN_NAME, t = alternation(lx::TITLE_SUFFIXES)),
+                0.75,
+                RuleKind::JpTitleSuffix,
+            ),
+            (
+                // 役職の直後は区切りが無くてもよい (「担当田中」「部長田中」)。部署の字は区切りがあるときだけ (「室内田園」を拾わない)
+                format!(r"(?:(?:{t})(?:の|[ 　])?|(?:[部課室係]|チーム|グループ)(?:の|[ 　]))(?P<v>{h}{{2,6}})", h = HAN_NAME, t = alternation(lx::TITLES)),
+                0.7,
+                RuleKind::JpAfterTitle,
+            ),
+            (
+                // 手紙の結び「田中より」(行末) も同じ扱い
+                format!(r"(?m)(?P<v>{h}{{2,8}})(?:(?:が|は|に|と|から|より|へ|も)(?:{a})|より[ 　]*$)", h = HAN_NAME, a = alternation(lx::PERSON_ACTIONS)),
+                0.7,
+                RuleKind::JpSurnameAction,
+            ),
         ];
         defs.into_iter()
             .map(|(p, conf, kind)| Rule { re: Regex::new(&p).expect("name rule regex"), conf, kind })
@@ -104,11 +144,6 @@ fn rules() -> &'static [Rule] {
     })
 }
 
-/// 名前の直前にあったら取り除く文字 (組織・役職の末尾など)。
-const TRIM_BEFORE: &str = "部課係室社局店所班科会団省庁当者先宛各御貴弊";
-
-/// 1 文字の姓として許容するもの。
-const SINGLE_CHAR_SURNAMES: &str = "林森関東西南北堀辻泉岡原谷沢菊楠桜梅滝藤門丸角城島坂岩峰岸宮星牧杉柳桐榎柴畑浜嶋舘乾巽楓";
 
 const JP_STOP: &[&str] = &[
     "皆", "各位", "客", "関係者", "担当者", "担当", "利用者", "管理者", "先方", "貴社", "御社", "弊社", "当社", "同社", "他社", "読者",
@@ -142,12 +177,51 @@ const CODE_LINE_PREFIXES: &[&str] = &[
 /// 役職・職業などの語尾 (これで終わる候補は人名とみなさない)。
 const JP_BAD_ENDINGS: &str = "師士員者人長家";
 
-fn is_han(c: char) -> bool {
-    matches!(c, '\u{4E00}'..='\u{9FFF}' | '\u{3400}'..='\u{4DBF}' | '\u{F900}'..='\u{FAFF}' | '々')
-}
-
 fn is_hiragana(c: char) -> bool {
     ('\u{3041}'..='\u{309F}').contains(&c)
+}
+
+/// 敬称として扱えるか。お客様・ご担当者様 (前が「お・ご・御」) と、熟語 (「様式」「氏名」) の一部は除く。
+fn honorific_applies(text: &str, name_start: usize, honorific_end: usize) -> bool {
+    if char_before(text, name_start).is_some_and(|c| "おご御".contains(c)) {
+        return false;
+    }
+    let (before, after) = (&text[..honorific_end], &text[honorific_end..]);
+    // 敬称の終わりから熟語が続く (「様式」= 様 + 式、「先生方」= 先生 + 方)
+    !HONORIFIC_COMPOUNDS.iter().any(|w| {
+        w.char_indices().skip(1).any(|(k, _)| before.ends_with(&w[..k]) && after.starts_with(&w[k..]))
+    })
+}
+
+/// 「課長の」「営業部 」のように、人を指す役職・部署の後ろか。
+/// 部署の字 (部・課など) は前が部署名のときだけ (「平野部の森林」の「部」は部署ではない)。
+fn after_person_marker(text: &str, s: usize) -> bool {
+    let head = text[..s].trim_end_matches([' ', '　']);
+    let head = head.strip_suffix('の').unwrap_or(head);
+    if lx::ends_with_any(head, lx::TITLES).is_some() {
+        return true;
+    }
+    let unit = ["部", "課", "室", "係", "チーム", "グループ"].iter().find_map(|u| head.strip_suffix(u));
+    unit.is_some_and(|before| lx::ends_with_any(before, lx::DEPARTMENT_WORDS).is_some())
+}
+
+/// [s, e) の末尾にある辞書の人名 (姓 + 名、または 2 文字以上の姓) の開始位置。長いものを優先。無ければ None。
+fn known_name_suffix(d: &NameDict, text: &str, s: usize, e: usize) -> Option<usize> {
+    let starts: Vec<usize> = text[s..e].char_indices().map(|(i, _)| s + i).collect();
+    // 名が 2 文字以上の「姓 + 名」→ 姓 → 名が 1 文字の「姓 + 名」の順 (「本日田中」を「日田 + 中」と読まない)
+    let full = |min_given: usize| starts.iter().copied().find(|&i| d.split_full_name(&text[i..e]).is_some_and(|g| g >= min_given));
+    full(2)
+        .or_else(|| starts.iter().copied().find(|&i| (2..=4).contains(&text[i..e].chars().count()) && d.is_jp_surname(&text[i..e])))
+        .or_else(|| full(1))
+}
+
+/// [s, e) の先頭にある辞書の人名 (姓 + 名、または姓) の範囲。無ければ None。
+fn known_name_prefix(d: &NameDict, text: &str, s: usize, e: usize) -> Option<(usize, usize)> {
+    let idx: Vec<usize> = text[s..e].char_indices().map(|(i, _)| s + i).chain(std::iter::once(e)).collect();
+    // 長いものから: 姓 + 名 → 姓 (2 文字以上)
+    (3..idx.len()).rev().find(|&k| d.is_full_name(&text[s..idx[k]])).map(|k| (s, idx[k])).or_else(|| {
+        (2..idx.len().min(5)).rev().find(|&k| d.is_jp_surname(&text[s..idx[k]])).map(|k| (s, idx[k]))
+    })
 }
 
 pub struct NameDetector {
@@ -209,6 +283,56 @@ impl NameDetector {
         }
     }
 
+    /// 候補の前に付いた組織名・役職・日付を取り除いた開始位置。
+    /// 切る位置は先頭か、組織の字 (部・課など) ・役職 (部長など) の直後だけ (「小鳥遊」を「遊」で切らない)。
+    /// 辞書の姓で始まる切り位置があればそこ (「営業部長田中様」→「田中」、「矢部様」は「部」で切らない)、無ければ最後の切り位置。
+    fn trim_leading_org(&self, text: &str, s: usize, e: usize) -> usize {
+        let mut s = s;
+        // 「1日田中様」の「日」: 直前が数字なら日付の字を除く
+        if char_before(text, s).is_some_and(is_digit_like) {
+            if let Some(c) = text[s..e].chars().next().filter(|c| lx::DATE_UNIT_CHARS.contains(*c)) {
+                s += c.len_utf8();
+            }
+        }
+        let cand = &text[s..e];
+        let head = &cand[..cand.find([' ', '　']).unwrap_or(cand.len())];
+        let mut cuts: Vec<usize> = head.char_indices().filter(|(_, c)| lx::ORG_TAIL_CHARS.contains(*c)).map(|(i, c)| i + c.len_utf8()).collect();
+        for (i, _) in head.char_indices() {
+            if let Some(t) = lx::starts_with_any(&head[i..], lx::TITLES) {
+                cuts.push(i + t.len());
+            }
+        }
+        cuts.sort_unstable();
+        cuts.dedup();
+        let known = self.dict.as_ref().and_then(|d| {
+            std::iter::once(0).chain(cuts.iter().copied()).find(|&i| i < head.len() && d.is_jp_surname(&head[i..]) && (i == 0 || head[i..].chars().count() >= 2))
+        });
+        s + known.or_else(|| cuts.last().copied().filter(|&i| i < cand.len())).unwrap_or(0)
+    }
+
+    /// 「商事 田中様」のように空白の前が組織名なら、空白の後ろからの開始位置。
+    fn drop_org_before_space(&self, text: &str, s: usize, e: usize) -> usize {
+        let Some(sp) = text[s..e].find([' ', '　']) else { return s };
+        let first = &text[s..s + sp];
+        let sp_len = text[s + sp..].chars().next().map_or(1, |c| c.len_utf8());
+        let second = &text[s + sp + sp_len..e];
+        let katakana = |w: &str| !w.is_empty() && w.chars().all(|c| ('\u{30A1}'..='\u{30FF}').contains(&c));
+        let keep_full = katakana(first) && katakana(second)
+            || match &self.dict {
+                // 後ろが辞書の名 (2 文字以上) なら、前は辞書にない珍しい姓 (「五百旗頭 太郎さん」) として残す。組織・役職の字を含むものは除く
+                Some(d) => {
+                    d.is_jp_surname(first)
+                        || (d.is_jp_given(second) && (d.starts_with_surname(first) || (second.chars().count() >= 2 && d.could_be_surname(first))))
+                }
+                None => !first.chars().any(|c| "事社所業部課会店局団院校園".contains(c)),
+            };
+        if keep_full {
+            s
+        } else {
+            s + sp + sp_len
+        }
+    }
+
     /// ルール層の候補を整形して信頼度を返す。不採用なら None。
     fn refine(&self, text: &str, s: usize, e: usize, kind: RuleKind, base: f32, honorific_end: usize) -> Option<(usize, usize, f32)> {
         let mut s = s;
@@ -216,62 +340,19 @@ impl NameDetector {
         let mut conf = base;
         match kind {
             RuleKind::JpHonorific => {
-                // 敬称の直後が漢字なら熟語の一部 (様式・氏名・殿堂など)
-                if let Some(c) = char_after(text, honorific_end) {
-                    if is_han(c) && !"宛方".contains(c) {
-                        return None;
-                    }
+                if !honorific_applies(text, s, honorific_end) {
+                    return None;
                 }
-                // お客様・ご担当者様 など
-                if let Some(c) = text[..s].chars().next_back() {
-                    if "おご御".contains(c) {
-                        return None;
-                    }
-                }
-                // 組織名などを前から取り除く。ただし辞書の姓で終わる部分があればそこから採る
-                // (「矢部様」「長曽我部様」「御手洗様」の「部」「御」で切らない。「営業部矢部様」→「矢部」)
-                let cand = &text[s..e];
-                let head = &cand[..cand.find([' ', '　']).unwrap_or(cand.len())];
-                // 切る位置は先頭か、組織などの字 (部・御など) の直後だけ (「小鳥遊」を「遊」で切らない)
-                let cut_points = std::iter::once(0).chain(head.char_indices().filter(|(_, c)| TRIM_BEFORE.contains(*c)).map(|(i, c)| i + c.len_utf8()));
-                let known_from = self.dict.as_ref().and_then(|d| {
-                    let mut cps = cut_points;
-                    cps.find(|&i| i < head.len() && d.is_jp_surname(&head[i..]) && (i == 0 || head[i..].chars().count() >= 2))
-                });
-                match known_from {
-                    Some(i) => s += i,
-                    None => {
-                        if let Some((i, c)) = cand.char_indices().filter(|(_, c)| TRIM_BEFORE.contains(*c)).last() {
-                            s += i + c.len_utf8();
-                        }
-                    }
-                }
+                s = self.trim_leading_org(text, s, e);
                 if s >= e {
                     return None;
                 }
-                // 「商事 田中様」のように空白の前が組織名なら後ろだけを採る
-                if let Some(sp) = text[s..e].find([' ', '　']) {
-                    let first = &text[s..s + sp];
-                    let sp_len = text[s + sp..].chars().next().map_or(1, |c| c.len_utf8());
-                    let second = &text[s + sp + sp_len..e];
-                    let keep_full = match &self.dict {
-                        // 敬称の前で、後ろが辞書の名 (2 文字以上) なら、前は辞書にない珍しい姓
-                        // (「五百旗頭 太郎さん」「躑躅森 花子様」) として残す。組織・役職の字を含むものは除く
-                        Some(d) => {
-                            d.is_jp_surname(first)
-                                || (d.is_jp_given(second) && (d.starts_with_surname(first) || (second.chars().count() >= 2 && d.could_be_surname(first))))
-                        }
-                        None => !first.chars().any(|c| "事社所業部課会店局団院校園".contains(c)),
-                    };
-                    if !keep_full {
-                        s += sp + sp_len;
-                    }
-                }
+                s = self.drop_org_before_space(text, s, e);
                 let cand = text[s..e].trim();
                 let first = cand.chars().next()?;
                 if is_han(first) {
                     let han_len = cand.chars().filter(|c| is_han(*c)).count();
-                    if han_len == 1 && !SINGLE_CHAR_SURNAMES.contains(first) {
+                    if han_len == 1 && !lx::SINGLE_CHAR_SURNAMES.contains(first) {
                         return None;
                     }
                     if cand.chars().last().is_some_and(|c| JP_BAD_ENDINGS.contains(c)) {
@@ -295,10 +376,41 @@ impl NameDetector {
                 }
                 let t = text[s..e].trim_end_matches([' ', '　']);
                 e = s + t.len();
+                // 項目名の後ろの会社名・部署名を取り除く (「担当: アオバ商事株式会社営業部 田中」→「田中」)
+                s = self.trim_leading_org(text, s, e);
+                if s >= e {
+                    return None;
+                }
+                s = self.drop_org_before_space(text, s, e);
+            }
+            RuleKind::JpSurnameAction => {
+                // 前に付いた語 (「本日田中が」の「本日」) を除き、末尾の辞書の姓 (または姓 + 名) だけを採る
+                let d = self.dict.as_ref()?;
+                let ns = known_name_suffix(d, text, s, e)?;
+                if crate::dict::is_major_place(&text[ns..e]) {
+                    return None;
+                }
+                s = ns;
+            }
+            RuleKind::JpTitleSuffix | RuleKind::JpAfterTitle => {
+                // 役職は人名でなくても付くので、辞書の姓 (または姓 + 名) のときだけ採る
+                let d = self.dict.as_ref()?;
+                if kind == RuleKind::JpAfterTitle && !after_person_marker(text, s) {
+                    return None;
+                }
+                if kind == RuleKind::JpTitleSuffix {
+                    s = self.trim_leading_org(text, s, e);
+                }
+                let (ns, ne) = known_name_prefix(d, text, s, e)?;
+                if kind == RuleKind::JpTitleSuffix && ne != e {
+                    return None;
+                }
+                s = ns;
+                e = ne;
             }
             RuleKind::JpSelfIntro => {
                 let cand = &text[s..e];
-                if let Some((i, c)) = cand.char_indices().filter(|(_, c)| TRIM_BEFORE.contains(*c)).last() {
+                if let Some((i, c)) = cand.char_indices().filter(|(_, c)| lx::ORG_TAIL_CHARS.contains(*c)).last() {
                     s += i + c.len_utf8();
                 }
                 if s >= e {
@@ -348,7 +460,7 @@ impl NameDetector {
         let cand = &text[s..e];
         let stop = match kind {
             RuleKind::En | RuleKind::Romaji => EN_STOP.iter().any(|w| cand.eq_ignore_ascii_case(w) || cand.split(' ').next().is_some_and(|f| f.eq_ignore_ascii_case(w))),
-            _ => JP_STOP.contains(&cand),
+            _ => JP_STOP.contains(&cand) || lx::SHOP_WORDS.contains(&cand),
         };
         if stop {
             return None;
@@ -366,119 +478,42 @@ impl NameDetector {
     }
 }
 
+impl NameDetector {
+    fn rule_candidates(&self, text: &str, rule: &Rule) -> Vec<RawMatch> {
+        rule.re
+            .captures_iter(text)
+            .filter_map(|caps| {
+                let v = caps.name("v")?;
+                let h_end = caps.name("h").map_or(v.end(), |h| h.end());
+                let (s, e, confidence) = self.refine(text, v.start(), v.end(), rule.kind, rule.conf, h_end)?;
+                Some(RawMatch { start: s, end: e, confidence })
+            })
+            .collect()
+    }
+
+    fn dictionary_candidates(&self, text: &str) -> Vec<RawMatch> {
+        let Some(d) = &self.dict else { return vec![] };
+        // 会社名のすぐ後ろの人名 (「株式会社アオバ商事田中太郎」)。会社名の検出器と同じ解析を使う
+        let mut v = crate::company::analyze(text, Some(d)).1;
+        v.extend(d.scan_names(text).into_iter().filter(|c| c.2 >= self.dict_threshold).map(|(start, end, confidence)| RawMatch { start, end, confidence }));
+        v
+    }
+}
+
 impl Detect for NameDetector {
+    /// 規則ごと・辞書の層は互いに独立なので並行して調べる (人名は検出器の中でいちばん時間がかかるため)。
     fn detect(&self, text: &str, out: &mut Vec<RawMatch>) {
-        for rule in rules() {
-            for caps in rule.re.captures_iter(text) {
-                let v = caps.name("v").unwrap();
-                let h_end = caps.name("h").map(|h| h.end()).unwrap_or(v.end());
-                if let Some((s, e, conf)) = self.refine(text, v.start(), v.end(), rule.kind, rule.conf, h_end) {
-                    out.push(RawMatch { start: s, end: e, confidence: conf });
-                }
-            }
-        }
-        if let Some(d) = &self.dict {
-            for (s, e, conf) in d.scan_names(text) {
-                if conf >= self.dict_threshold {
-                    out.push(RawMatch { start: s, end: e, confidence: conf });
-                }
-            }
-        }
+        use rayon::prelude::*;
+        let (by_rules, by_dict) = rayon::join(
+            || rules().par_iter().flat_map_iter(|rule| self.rule_candidates(text, rule)).collect::<Vec<_>>(),
+            || self.dictionary_candidates(text),
+        );
+        out.extend(by_rules);
+        out.extend(by_dict);
         self.morph_candidates(text, out);
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn run(text: &str) -> Vec<String> {
-        let d = NameDetector::new(None, 0.6);
-        let mut out = vec![];
-        d.detect(text, &mut out);
-        out.sort_by_key(|m| m.start);
-        out.iter().map(|m| text[m.start..m.end].to_string()).collect()
-    }
-
-    #[test]
-    fn honorifics() {
-        assert_eq!(run("山田様、お世話になっております。"), vec!["山田"]);
-        assert_eq!(run("営業部山田太郎様"), vec!["山田太郎"]);
-        assert_eq!(run("佐藤 花子さんへ"), vec!["佐藤 花子"]);
-        assert_eq!(run("スミスさんと話した"), vec!["スミス"]);
-        assert_eq!(run("林様"), vec!["林"]);
-    }
-
-    #[test]
-    fn rare_surname_before_given_name_is_kept() {
-        // 辞書にない姓でも、後ろが辞書の名なら姓ごと検出する (名だけをマスクして姓が残らないように)
-        let d = NameDetector::new(Some(NameDict::get()), 0.6);
-        let text = "五百旗頭 太郎さんから電話。商事 太郎さんにも連絡。";
-        let mut out = vec![];
-        d.detect(text, &mut out);
-        let got: Vec<&str> = out.iter().map(|m| &text[m.start..m.end]).collect();
-        assert!(got.contains(&"五百旗頭 太郎"), "{got:?}");
-        // 組織名の後ろの名は、これまでどおり名だけ
-        assert!(!got.iter().any(|g| g.contains("商事")), "{got:?}");
-    }
-
-    #[test]
-    fn honorific_false_positives() {
-        assert!(run("お客様各位").is_empty());
-        assert!(run("皆様、ご担当者様").is_empty());
-        assert!(run("申請様式を確認").is_empty());
-        assert!(run("仕様です").is_empty());
-        assert!(run("顧客氏名の欄").is_empty());
-        assert!(run("看護師さんが来た").is_empty());
-        assert!(run("お疲れ様です").is_empty());
-    }
-
-    #[test]
-    fn labels() {
-        assert_eq!(run("氏名：鈴木 一郎です"), vec!["鈴木 一郎"]);
-        assert_eq!(run("口座名義: ヤマダ タロウ"), vec!["ヤマダ タロウ"]);
-        assert_eq!(run("代表取締役 田中 正"), vec!["田中 正"]);
-        assert!(run("担当：未定").is_empty());
-    }
-
-    #[test]
-    fn self_introduction() {
-        assert_eq!(run("営業部の山田と申します。"), vec!["山田"]);
-        assert_eq!(run("担当の佐々木です。"), vec!["佐々木"]);
-    }
-
-    #[test]
-    fn english() {
-        assert_eq!(run("Meeting with Mr. John Smith today"), vec!["John Smith"]);
-        assert_eq!(run("Dear Alice,\nthanks"), vec!["Alice"]);
-        assert_eq!(run("Best regards,\nBob Stone\n"), vec!["Bob Stone"]);
-        assert_eq!(run("Assignee: Carol White"), vec!["Carol White"]);
-        assert!(run("Hi team,").is_empty());
-        assert!(run("Hello World!").is_empty());
-        // 「Mr」を名前にしない
-        assert_eq!(run("Dear Mr. Yamada,"), vec!["Yamada"]);
-        assert_eq!(run("Best regards, Bob Stone"), vec!["Bob Stone"]);
-        assert!(run("Thanks, Bye").is_empty());
-        // ソースコードの定数・型注釈は人名にしない
-        assert!(run("const CLIENT: Token = Token(1);").is_empty());
-        assert!(run("    from: Option<String>,\n    owner: String,\n").is_empty());
-        // 名前の後ろの括弧・メールアドレスはそのまま人名
-        assert_eq!(run("Contact: John Smith (Sales)"), vec!["John Smith"]);
-        assert_eq!(run("From: Jane Smith<jane@example.org>"), vec!["Jane Smith"]);
-    }
-
-    #[test]
-    fn romaji_honorifics() {
-        // 辞書なし: ハイフンでつながる敬称だけ
-        assert_eq!(run("Tanaka-san, thanks."), vec!["Tanaka"]);
-        assert_eq!(run("Ask Kenji Sato-sensei"), vec!["Kenji Sato"]);
-        assert!(run("Sato san will join").is_empty());
-        let d = NameDetector::new(Some(NameDict::get()), 0.6);
-        let mut out = vec![];
-        let text = "Meeting with Sato san and Tanaka-kun tomorrow. Jose san? Puerto san";
-        d.detect(text, &mut out);
-        let mut got: Vec<&str> = out.iter().map(|m| &text[m.start..m.end]).collect();
-        got.sort();
-        assert_eq!(got, vec!["Sato", "Tanaka"]);
-    }
-}
+#[path = "tests/names.rs"]
+mod tests;

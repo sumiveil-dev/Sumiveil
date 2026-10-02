@@ -100,7 +100,7 @@ li { margin-bottom: .8mm; }
     <li>文字列を検索して、見つけた語をその場でマスク対象にできます。フォルダ内のファイルを横断して探すこともできます</li>
     <li>処理はすべてこの PC の中だけで行い、インターネットには一切接続しません</li>
   </ul>
-  <div class="meta">対象バージョン: Sumiveil 1.0.0 ／ 対象 OS: Windows 10 (1809 以降)・Windows 11 (64bit)</div>
+  <div class="meta">対象バージョン: Sumiveil 1.0.1 ／ 対象 OS: Windows 10 (1809 以降)・Windows 11 (64bit)</div>
 </section>
 
 <!-- ─────────────── 目次 ─────────────── -->
@@ -154,11 +154,11 @@ li { margin-bottom: .8mm; }
 <!-- ─────────────── 2 ─────────────── -->
 <section class="chapter">
   <h2><span class="no">2</span>インストール</h2>
-  <p class="lead">配布された <code>Sumiveil-Setup-1.0.0-x64.exe</code> をダブルクリックします。所要時間は 1 分ほどです。</p>
+  <p class="lead">配布された <code>Sumiveil-Setup-1.0.1-x64.exe</code> をダブルクリックします。所要時間は 1 分ほどです。</p>
 
   <div class="box warn">
     <span class="ttl">よくあるつまずき ①: 「Windows によって PC が保護されました」と表示された</span>
-    <p>インターネットや共有フォルダから入手したアプリで表示される Windows の確認画面 (SmartScreen) です。配布元が社内の担当者であることを確認したうえで、<strong>「詳細情報」</strong>をクリック → <strong>「実行」</strong>を押してください。ボタンが表示されない場合は、会社の方針でブロックされています。情報システム担当者に相談してください。</p>
+    <p>インターネットや共有フォルダから入手したアプリで表示される Windows の確認画面 (SmartScreen) です。配布元 (GitHub の Releases) から入手したファイルであることを確認したうえで、<strong>「詳細情報」</strong>をクリック → <strong>「実行」</strong>を押してください。ボタンが表示されない場合は、組織の方針でブロックされています。PC の管理者に相談してください。</p>
   </div>
 
   <h3>2-1. インストールモードを選ぶ</h3>
@@ -201,7 +201,7 @@ li { margin-bottom: .8mm; }
 
   <div class="box tip">
     <span class="ttl">インストールできない PC の場合</span>
-    <p>ポータブル版 <code>Sumiveil-1.0.0-portable-x64.zip</code> を好きな場所に展開し、中の <code>sumiveil-gui.exe</code> を起動してください。設定は同じフォルダの <code>sumiveil.toml</code> に保存されるので、USB メモリなどで持ち運べます。</p>
+    <p>ポータブル版 <code>Sumiveil-1.0.1-portable-x64.zip</code> を好きな場所に展開し、中の <code>sumiveil-gui.exe</code> を起動してください。形態素解析 (7-4) を使う場合は、<code>Sumiveil-1.0.1-morphology-dict.zip</code> も同じ場所に展開します (<code>dict</code> フォルダが <code>sumiveil.exe</code> と同じフォルダに入ります)。設定は同じフォルダの <code>sumiveil.toml</code> に保存されるので、USB メモリなどで持ち運べます。</p>
   </div>
 </section>
 
@@ -257,7 +257,7 @@ li { margin-bottom: .8mm; }
       <li><strong>社名・製品名・案件名</strong>などは、7-3 の「キーワード辞書」に登録すると確実に隠せます。</li>
       <li><strong>敬称の付いていない人名</strong>は、2-3 の「形態素解析辞書」を入れて 7-4 で有効にすると見つけやすくなります。</li>
       <li>その場で隠したい語は、4-5 の<strong>検索</strong>で探して「マスク対象にする」を選ぶと、すぐに隠せます。</li>
-      <li>もっと広く隠したい場合は、右上のプロファイルを<strong>「strict (厳格)」</strong>に切り替えます (日付・金額・URL なども対象になります)。</li>
+      <li>もっと広く隠したい場合は、右上のプロファイルを<strong>「strict」</strong>に切り替えます (日付・金額・URL なども対象になります)。</li>
     </ul>
   </div>
 
@@ -363,7 +363,7 @@ li { margin-bottom: .8mm; }
   <figure><img src="images/settings-allowlist.png" alt="" style="max-width:62%"><figcaption>「許可リスト」タブ (隠さない)。値・ドメイン・正規表現で指定し、「保存」を押す</figcaption></figure>
   <ul>
     <li><strong>キーワード辞書</strong>: 取引先名・製品名・案件のコードネームなどを 1 行に 1 語で登録し、「保存」を押します。マスク画面の検索 (4-5) から登録することもできます。</li>
-    <li><strong>許可リスト</strong>: 会社の代表アドレスや自社ドメイン (例: <code>mycompany.co.jp</code>) など、隠す必要がないものを登録します。</li>
+    <li><strong>許可リスト</strong>: 会社の代表アドレスや自社ドメイン (例: <code>example.ne.jp</code>) など、隠す必要がないものを登録します。</li>
     <li><strong>カスタムルール</strong>: 社員番号やチケット番号など、決まった形の値を正規表現で登録します (上級者向け)。</li>
   </ul>
 
@@ -371,7 +371,7 @@ li { margin-bottom: .8mm; }
   <p>「検出対象」画面の「人名・地名」を開くと、形態素解析 (インストール時に「形態素解析辞書」を選んだ場合) や地名の検出をオンにできます。画面の上のスライダーで検出の感度も調整できます。</p>
   <ul>
     <li>ローマ字の日本人名 (Hanako Suzuki・YAMADA Taro・Tanaka-san など) は、姓と名が並んでいるか敬称が付いていれば検出します。</li>
-    <li>内蔵の辞書にない<strong>珍しい姓</strong> (小鳥遊・五百旗頭 など) も、「様」「さん」などの敬称や「担当:」などの項目名が付いているか、辞書にある名と並んでいれば検出します。敬称も名もない姓だけの記載は見逃すことがあるので、必要ならキーワード辞書に登録してください。</li>
+    <li>内蔵の辞書にない<strong>珍しい姓</strong> (小鳥遊・五百旗頭 など) も、「様」「さん」などの敬称や「担当:」などの項目名が付いているか、辞書にある名と並んでいれば検出します。敬称も名もない姓だけの記載も、「田中・佐藤の 2 名」のような並びや「田中が担当」「山本に連絡」のような書き方なら検出します。それ以外は見逃すことがあるので、必要なら strict プロファイルに切り替えるか、キーワード辞書に登録してください。</li>
   </ul>
 
   <h3>7-5. プロファイル (用途ごとの設定)</h3>

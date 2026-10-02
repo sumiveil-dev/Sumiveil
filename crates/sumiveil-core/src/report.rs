@@ -6,13 +6,16 @@ use serde::Serialize;
 
 use crate::engine::MaskResult;
 use crate::text::LineIndex;
+use std::collections::HashMap;
+use std::sync::Arc;
 
+/// 検出 1 件。検出器の名前などは検出器ごとに 1 つを共有する (件数が多いときのメモリを抑えるため)。
 #[derive(Debug, Clone, Serialize)]
 pub struct JsonDetection {
-    pub id: String,
-    pub category: String,
-    pub label: String,
-    pub name: String,
+    pub id: Arc<str>,
+    pub category: Arc<str>,
+    pub label: Arc<str>,
+    pub name: Arc<str>,
     /// 1 始まりの行・桁 (文字単位)
     pub line: usize,
     pub column: usize,
@@ -67,20 +70,24 @@ pub struct ReportOptions<'a> {
 
 pub fn build_report(original_text: &str, result: &MaskResult, opt: &ReportOptions) -> JsonReport {
     let idx = LineIndex::new(original_text);
-    let mut by_detector = BTreeMap::new();
-    let mut by_category = BTreeMap::new();
+    // 検出器ごとの名前 (id・カテゴリ・ラベル・表示名) と件数。名前は検出器ごとに 1 回だけ作って共有する
+    let mut shared: HashMap<*const crate::DetectorMeta, ([Arc<str>; 4], usize)> = HashMap::new();
     let detections = result
         .replacements
         .iter()
         .map(|r| {
-            *by_detector.entry(r.meta.id.clone()).or_insert(0) += 1;
-            *by_category.entry(r.meta.category.clone()).or_insert(0) += 1;
+            let entry = shared.entry(Arc::as_ptr(&r.meta)).or_insert_with(|| {
+                let name = if opt.japanese_names { &r.meta.name_ja } else { &r.meta.name_en };
+                ([r.meta.id.as_str().into(), r.meta.category.as_str().into(), r.meta.label.as_str().into(), name.as_str().into()], 0)
+            });
+            entry.1 += 1;
+            let [id, category, label, name] = entry.0.clone();
             let (line, column) = idx.line_col(original_text, r.start);
             JsonDetection {
-                id: r.meta.id.clone(),
-                category: r.meta.category.clone(),
-                label: r.meta.label.clone(),
-                name: if opt.japanese_names { r.meta.name_ja.clone() } else { r.meta.name_en.clone() },
+                id,
+                category,
+                label,
+                name,
                 line,
                 column,
                 start: r.start,
@@ -92,6 +99,12 @@ pub fn build_report(original_text: &str, result: &MaskResult, opt: &ReportOption
             }
         })
         .collect::<Vec<_>>();
+    let mut by_detector = BTreeMap::new();
+    let mut by_category = BTreeMap::new();
+    for ([id, category, ..], n) in shared.values() {
+        *by_detector.entry(id.to_string()).or_insert(0) += n;
+        *by_category.entry(category.to_string()).or_insert(0) += n;
+    }
     JsonReport {
         tool: "sumiveil",
         version: crate::VERSION,

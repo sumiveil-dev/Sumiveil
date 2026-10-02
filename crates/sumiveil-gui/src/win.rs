@@ -132,7 +132,65 @@ pub fn acquire_single_instance() -> bool {
     true
 }
 
+/// Windows のアプリ パッケージとしてインストールされて動いているか。
+/// パッケージでは、通知やタスクバーの ID (AppUserModelID) はパッケージのものを使う。
+pub fn is_packaged() -> bool {
+    static PACKAGED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *PACKAGED.get_or_init(|| {
+        use windows::Win32::Storage::Packaging::Appx::GetCurrentPackageFullName;
+        let mut len = 0u32;
+        // パッケージでなければ APPMODEL_ERROR_NO_PACKAGE (15700) が返る
+        let rc = unsafe { GetCurrentPackageFullName(&mut len, None) };
+        rc.0 != 15700
+    })
+}
+
+/// パッケージファミリー名 (パッケージとして動いているときだけ)。
+fn package_family_name() -> Option<String> {
+    use windows::Win32::Storage::Packaging::Appx::GetCurrentPackageFamilyName;
+    let mut len = 0u32;
+    unsafe {
+        let _ = GetCurrentPackageFamilyName(&mut len, None);
+        if len == 0 {
+            return None;
+        }
+        let mut buf = vec![0u16; len as usize];
+        if GetCurrentPackageFamilyName(&mut len, Some(windows::core::PWSTR(buf.as_mut_ptr()))).0 != 0 {
+            return None;
+        }
+        Some(String::from_utf16_lossy(&buf[..(len as usize).saturating_sub(1)]))
+    }
+}
+
+/// ほかのアプリ (エクスプローラー・メモ帳) に渡すためのパス。
+/// パッケージとして動いているときは、%APPDATA% と %LOCALAPPDATA% に新しく作ったファイルは、パッケージ専用の場所
+/// (%LOCALAPPDATA%\Packages\<パッケージファミリー名>\LocalCache) に振り替えられ、ほかのアプリからは元の場所に見えない。
+/// 振り替え先に実物があるときは、そちらを返す (元の場所にもとからあるファイルは振り替えられないので、そのまま返す)。
+pub fn external_path(path: &std::path::Path) -> std::path::PathBuf {
+    use std::path::PathBuf;
+    if !is_packaged() {
+        return path.to_path_buf();
+    }
+    static PFN: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    let (Some(pfn), Some(local), Some(roaming)) = (PFN.get_or_init(package_family_name).clone(), std::env::var_os("LOCALAPPDATA"), std::env::var_os("APPDATA")) else {
+        return path.to_path_buf();
+    };
+    let (local, roaming) = (PathBuf::from(local), PathBuf::from(roaming));
+    let cache = local.join("Packages").join(pfn).join("LocalCache");
+    let mapped = if let Ok(rest) = path.strip_prefix(&roaming) {
+        cache.join("Roaming").join(rest)
+    } else if let Ok(rest) = path.strip_prefix(&local) {
+        cache.join("Local").join(rest)
+    } else {
+        return path.to_path_buf();
+    };
+    if mapped.exists() { mapped } else { path.to_path_buf() }
+}
+
 pub fn set_app_id() {
+    if is_packaged() {
+        return;
+    }
     unsafe {
         let _ = SetCurrentProcessExplicitAppUserModelID(&HSTRING::from(AUMID));
     }
@@ -142,7 +200,7 @@ fn xml_escape(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
 }
 
-/// トースト通知 (インストーラーで作成したショートカットの AppUserModelID を使う)。失敗しても無視してよい。
+/// トースト通知 (インストーラーで作成したショートカットの AppUserModelID を使う。パッケージとして動いているときはパッケージの ID)。失敗しても無視してよい。
 pub fn toast(title: &str, body: &str) -> windows::core::Result<()> {
     use windows::Data::Xml::Dom::XmlDocument;
     use windows::UI::Notifications::{ToastNotification, ToastNotificationManager};
@@ -153,15 +211,16 @@ pub fn toast(title: &str, body: &str) -> windows::core::Result<()> {
         xml_escape(body)
     )))?;
     let toast = ToastNotification::CreateToastNotification(&doc)?;
-    ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(AUMID))?.Show(&toast)
+    let notifier = if is_packaged() { ToastNotificationManager::CreateToastNotifier()? } else { ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(AUMID))? };
+    notifier.Show(&toast)
 }
 
 /// フォルダやファイルをエクスプローラーで開く。
 pub fn open_in_explorer(path: &std::path::Path) {
-    let _ = std::process::Command::new("explorer.exe").arg(path).spawn();
+    let _ = std::process::Command::new("explorer.exe").arg(external_path(path)).spawn();
 }
 
 /// ファイルの場所をエクスプローラーで選択状態で開く。
 pub fn reveal_in_explorer(path: &std::path::Path) {
-    let _ = std::process::Command::new("explorer.exe").arg(format!("/select,{}", path.display())).spawn();
+    let _ = std::process::Command::new("explorer.exe").arg(format!("/select,{}", external_path(path).display())).spawn();
 }
