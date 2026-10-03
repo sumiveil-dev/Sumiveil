@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sumiveil — 共有する前に、個人情報をマスクする Windows ツール</title>
+<meta name="description" content="Sumiveil は、テキスト中の個人情報・機密情報 (氏名・メールアドレス・電話番号・住所・マイナンバー・API キー・パスワードなど) を見つけて &lt;NAME_1&gt; のような目印に置き換える Windows 用の無料ツールです。処理はすべて PC の中で完結し、インターネットには接続しません。">
+<link rel="canonical" href="https://sumiveil-dev.github.io/Sumiveil/">
+<meta name="theme-color" content="#F4F1EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171513" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Sumiveil — 共有する前に、個人情報をマスクする">
+<meta property="og:description" content="テキスト中の個人情報・機密情報を見つけて目印に置き換える Windows 用の無料ツール。完全オフライン。">
+<meta property="og:url" content="https://sumiveil-dev.github.io/Sumiveil/">
+<meta property="og:image" content="https://sumiveil-dev.github.io/Sumiveil/guide/images/main-annotated.png">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="guide/images/logo.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Sumiveil",
+  "operatingSystem": "Windows 10, Windows 11",
+  "applicationCategory": "UtilitiesApplication",
+  "description": "テキスト中の個人情報・機密情報を見つけて目印に置き換える Windows 用ツール。処理はすべて PC の中で完結します。",
+  "url": "https://sumiveil-dev.github.io/Sumiveil/",
+  "downloadUrl": "https://github.com/sumiveil-dev/Sumiveil/releases/latest",
+  "license": "https://opensource.org/licenses/MIT",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" },
+  "author": { "@type": "Person", "name": "sumiveil-dev" }
+}
+</script>
+<style>
+:root {
+  --paper: #F4F1EA;
+  --card: #FBF9F5;
+  --stroke: #E0D9CC;
+  --ink: #1E1C1A;
+  --ink-2: #5E5850;
+  --shu: #A63A27;
+  --shu-soft: rgba(183, 65, 44, 0.10);
+  --band: #1E1C1A;
+  --band-text: #F4F1EA;
+  --tag-bg: rgba(30, 28, 26, 0.08);
+  --code-bg: #FFFEFB;
+  --shadow: 0 1px 2px rgba(30, 28, 26, 0.06), 0 8px 24px rgba(30, 28, 26, 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #171513;
+    --card: #22201C;
+    --stroke: #34302A;
+    --ink: #ECE7DD;
+    --ink-2: #B3AB9D;
+    --shu: #E58A73;
+    --shu-soft: rgba(229, 138, 115, 0.12);
+    --band: #ECE7DD;
+    --band-text: #171513;
+    --tag-bg: rgba(236, 231, 221, 0.10);
+    --code-bg: #12100E;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Yu Gothic UI", "Yu Gothic", "Meiryo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+}
+a { color: var(--shu); text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+code, .mono { font-family: "Cascadia Mono", Consolas, "BIZ UDGothic", monospace; font-size: 0.92em; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+.skip { position: absolute; left: -9999px; }
+.skip:focus { left: 16px; top: 12px; background: var(--card); padding: 6px 12px; border-radius: 6px; z-index: 10; }
+
+/* ── header ── */
+header.top { border-bottom: 1px solid var(--stroke); }
+header.top .wrap { display: flex; align-items: center; gap: 16px; height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font-weight: 700; font-size: 20px; letter-spacing: 0.02em; }
+.brand img { width: 32px; height: 32px; }
+nav.top { margin-left: auto; display: flex; gap: 20px; font-size: 15px; }
+nav.top a { color: var(--ink-2); text-decoration: none; white-space: nowrap; }
+@media (max-width: 480px) { nav.top { gap: 12px; font-size: 14px; } .brand { font-size: 18px; } }
+nav.top a:hover { color: var(--ink); }
+@media (max-width: 720px) { nav.top .opt { display: none; } }
+
+/* ── hero ── */
+.hero { padding: 64px 0 40px; display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; }
+@media (max-width: 900px) { .hero { grid-template-columns: 1fr; gap: 32px; padding-top: 40px; } }
+.eyebrow { color: var(--shu); font-weight: 700; font-size: 14px; letter-spacing: 0.08em; margin: 0 0 12px; }
+h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.25; margin: 0 0 20px; letter-spacing: 0.01em; }
+h1 .veil { position: relative; white-space: nowrap; }
+h1 .veil::after {
+  content: ""; position: absolute; left: -4px; right: -4px; top: 58%; height: 0.32em;
+  background: var(--shu); opacity: 0.85; border-radius: 0.2em; z-index: -1; transform: rotate(-1.2deg);
+}
+.lead { font-size: 17px; color: var(--ink-2); margin: 0 0 28px; max-width: 34em; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 8px;
+  font-weight: 700; text-decoration: none; font-size: 16px; border: 1px solid transparent;
+}
+.btn.primary { background: var(--band); color: var(--band-text); }
+.btn.primary:hover { opacity: 0.9; }
+.btn.ghost { border-color: var(--stroke); color: var(--ink); background: var(--card); }
+.btn.ghost:hover { border-color: var(--ink-2); }
+.meta { margin-top: 16px; font-size: 14px; color: var(--ink-2); }
+
+/* before / after */
+.demo { background: var(--card); border: 1px solid var(--stroke); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+.demo .row { padding: 18px 20px; }
+.demo .row + .row { border-top: 1px dashed var(--stroke); }
+.demo .label { font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: 0.08em; margin-bottom: 8px; }
+.demo p { margin: 0; font-size: 15px; line-height: 2; }
+.pii { background: var(--shu-soft); border-bottom: 2px solid var(--shu); padding: 1px 2px; }
+.tag { background: var(--band); color: var(--band-text); border-radius: 4px; padding: 1px 6px; font-family: "Cascadia Mono", Consolas, monospace; font-size: 0.86em; white-space: nowrap; }
+
+/* ── sections ── */
+section { padding: 56px 0; }
+section + section { border-top: 1px solid var(--stroke); }
+h2 { font-size: 28px; margin: 0 0 8px; }
+.sub { color: var(--ink-2); margin: 0 0 32px; }
+figure.shot { margin: 0; }
+figure.shot img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--stroke); box-shadow: var(--shadow); display: block; }
+figure.shot figcaption { font-size: 14px; color: var(--ink-2); margin-top: 10px; }
+
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+.card { background: var(--card); border: 1px solid var(--stroke); border-radius: 10px; padding: 20px; }
+.card h3 { font-size: 17px; margin: 0 0 6px; display: flex; gap: 10px; align-items: center; }
+.card h3 .mark { width: 10px; height: 10px; background: var(--shu); border-radius: 2px; flex: none; }
+.card p { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+ol.steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: s; }
+@media (max-width: 760px) { ol.steps { grid-template-columns: 1fr; } }
+ol.steps li { counter-increment: s; background: var(--card); border: 1px solid var(--stroke); border-radius: 10px; padding: 20px 20px 20px 64px; position: relative; }
+ol.steps li::before {
+  content: counter(s); position: absolute; left: 20px; top: 18px; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--band); color: var(--band-text); font-weight: 700; display: grid; place-items: center; font-size: 15px;
+}
+ol.steps strong { display: block; margin-bottom: 2px; }
+ol.steps span { color: var(--ink-2); font-size: 15px; }
+
+table.cats { width: 100%; border-collapse: collapse; font-size: 15px; background: var(--card); border: 1px solid var(--stroke); border-radius: 10px; overflow: hidden; }
+table.cats th, table.cats td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--stroke); vertical-align: top; }
+table.cats tr:last-child td { border-bottom: none; }
+table.cats th { font-size: 13px; color: var(--ink-2); font-weight: 700; background: var(--tag-bg); }
+table.cats td:first-child { white-space: nowrap; font-weight: 700; }
+.table-scroll { overflow-x: auto; }
+
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.two > *, .hero > *, .grid > * { min-width: 0; }
+@media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
+ul.files { list-style: none; padding: 0; margin: 0 0 16px; }
+ul.files li { padding: 10px 0; border-bottom: 1px solid var(--stroke); display: flex; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+ul.files code { font-weight: 700; }
+ul.files span { color: var(--ink-2); font-size: 14px; }
+.note { border-left: 4px solid var(--shu); background: var(--shu-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 15px; margin: 16px 0 0; }
+pre.cli { background: var(--code-bg); border: 1px solid var(--stroke); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-size: 14px; line-height: 1.7; margin: 0; }
+
+.en p, .en li { font-size: 15px; }
+.en ul { padding-left: 1.2em; }
+
+footer { border-top: 1px solid var(--stroke); padding: 32px 0 48px; color: var(--ink-2); font-size: 14px; }
+footer .links { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 12px; }
+footer p { margin: 4px 0; }
+:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">本文へ移動</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="guide/images/logo.png" alt="" width="32" height="32">Sumiveil</a>
+    <nav class="top" aria-label="ページ内">
+      <a class="opt" href="#features">特長</a>
+      <a class="opt" href="#how">使い方</a>
+      <a href="#download">ダウンロード</a>
+      <a href="#english" lang="en">English</a>
+      <a href="https://github.com/sumiveil-dev/Sumiveil">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <p class="eyebrow">Windows 用・無料・オープンソース</p>
+      <h1>共有する前に、<br><span class="veil">ひと塗り。</span></h1>
+      <p class="lead">Sumiveil (スミベール) は、文章の中の個人情報・機密情報を見つけて、<code>&lt;NAME_1&gt;</code> のような目印に置き換える Windows 用ツールです。ログやメール、チャットの記録を生成 AI や社外に渡す前に使えます。<strong>処理はすべて PC の中で完結し、インターネットには一切接続しません。</strong></p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/sumiveil-dev/Sumiveil/releases/latest">最新版をダウンロード</a>
+        <a class="btn ghost" href="https://github.com/sumiveil-dev/Sumiveil">GitHub で見る</a>
+      </div>
+      <p class="meta">Windows 10 (1809 以降)・Windows 11 (64bit) ／ MIT ライセンス</p>
+    </div>
+    <div class="demo" role="figure" aria-label="マスクの例 (値はすべて架空)">
+      <div class="row">
+        <div class="label">元のテキスト</div>
+        <p>To: <span class="pii">株式会社サンプル商事</span> <span class="pii">田中</span>様<br>
+        TEL <span class="pii">090-1234-5678</span> ／ <span class="pii">tanaka@example1.co.jp</span><br>
+        password=<span class="pii">NotARealPassword</span></p>
+      </div>
+      <div class="row">
+        <div class="label">マスク後</div>
+        <p>To: <span class="tag">&lt;COMPANY_1&gt;</span> <span class="tag">&lt;NAME_1&gt;</span>様<br>
+        TEL <span class="tag">&lt;PHONE_1&gt;</span> ／ <span class="tag">&lt;EMAIL_1&gt;</span><br>
+        password=<span class="tag">&lt;PASSWORD_1&gt;</span></p>
+      </div>
+    </div>
+  </div>
+
+  <figure class="shot">
+    <img src="guide/images/main-annotated.png" width="1600" height="1000" alt="Sumiveil のメイン画面。左に元のテキスト、中央にマスク後のテキスト、右に検出の一覧が並ぶ。" loading="lazy">
+    <figcaption>メイン画面: 左が元のテキスト、中央がマスク後、右が検出の一覧 (画面の値はすべて架空です)</figcaption>
+  </figure>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <h2>特長</h2>
+    <p class="sub">貼り付けるだけで、見つけて、置き換えて、確かめられます。</p>
+    <div class="grid">
+      <div class="card"><h3><span class="mark"></span>完全オフライン</h3><p>入力した文章もファイルも、外部に送信しません。テレメトリ (利用状況の送信) もありません。</p></div>
+      <div class="card"><h3><span class="mark"></span>67 種類の検出</h3><p>氏名・住所・電話番号・メールアドレス・マイナンバー・カード番号・IP アドレス・API キー・パスワードなど。カテゴリごとにオン/オフできます。</p></div>
+      <div class="card"><h3><span class="mark"></span>左右で見比べて確認</h3><p>元のテキストとマスク後を並べて表示します。見逃しはキーワード辞書に、隠しすぎは許可リストに登録できます。</p></div>
+      <div class="card"><h3><span class="mark"></span>ファイルもフォルダも</h3><p>テキスト・ログ・CSV・メール (.eml)・Word / Excel / PowerPoint・PDF などを、フォルダごとまとめて処理できます。</p></div>
+      <div class="card"><h3><span class="mark"></span>どこからでもホットキー</h3><p>コピーした文章を、キー操作ひとつでその場でマスクできます。ほかのアプリから離れずに使えます。</p></div>
+      <div class="card"><h3><span class="mark"></span>コマンドラインにも対応</h3><p>パイプ入力・JSON 出力・終了コードでの判定に対応し、CI やコミット前の確認に組み込めます。</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <h2>使い方</h2>
+    <p class="sub">3 ステップで終わります。</p>
+    <ol class="steps">
+      <li><strong>貼り付ける</strong><span>文章を貼り付けるか、ファイルをドラッグ &amp; ドロップします。</span></li>
+      <li><strong>確かめる</strong><span>色付きの箇所と検出の一覧を見て、隠すもの・残すものを調整します。</span></li>
+      <li><strong>使う</strong><span>「結果をコピー」で、マスク後の文章を送り先に貼り付けます。</span></li>
+    </ol>
+    <div class="two" style="margin-top:24px">
+      <figure class="shot">
+        <img src="guide/images/hover.png" width="760" height="330" alt="検出した箇所にマウスを乗せると、種類と置き換え後の値が表示される。" loading="lazy">
+        <figcaption>検出した箇所にマウスを乗せると、種類と置き換え後の値を確認できます</figcaption>
+      </figure>
+      <div>
+        <pre class="cli" aria-label="コマンドラインの例"><code>sumiveil -t "田中様 090-1234-5678"
+&lt;NAME_1&gt;様 &lt;PHONE_1&gt;
+
+sumiveil report.txt -o report.masked.txt
+sumiveil check -r src\   # 見つかったら終了コード 1</code></pre>
+        <p class="note">自動の検出は完全ではありません。共有する前に、結果を必ず目で確かめてください。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="detects">
+  <div class="wrap">
+    <h2>検出できるもの</h2>
+    <p class="sub">10 のカテゴリ、67 種類の検出器。一覧は <a href="https://github.com/sumiveil-dev/Sumiveil/blob/main/docs/detectors.md">検出器の一覧</a> にあります。</p>
+    <div class="table-scroll">
+      <table class="cats">
+        <thead><tr><th scope="col">カテゴリ</th><th scope="col">主な例</th></tr></thead>
+        <tbody>
+          <tr><td>連絡先</td><td>メールアドレス、電話番号 (日本・国際)、郵便番号</td></tr>
+          <tr><td>個人情報</td><td>氏名 (敬称・項目名・辞書・役職から)、住所、生年月日、社員番号</td></tr>
+          <tr><td>日本の公的 ID</td><td>マイナンバー、法人番号、運転免許証、パスポート、在留カード、基礎年金番号、口座番号</td></tr>
+          <tr><td>金融</td><td>クレジットカード番号 (チェックディジットで確認)、有効期限、セキュリティコード</td></tr>
+          <tr><td>ネットワーク / IT</td><td>IP アドレス、MAC アドレス、ホスト名、Windows のパスやドメインのユーザー名、URL 内の認証情報</td></tr>
+          <tr><td>認証情報</td><td>秘密鍵、各種クラウド・開発サービスの API キーやトークン、JWT、パスワード</td></tr>
+          <tr><td>組織・位置</td><td>会社名・法人名、緯度経度、自動車のナンバー</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <h2>ダウンロード</h2>
+    <p class="sub">GitHub の <a href="https://github.com/sumiveil-dev/Sumiveil/releases/latest">Releases (最新版)</a> から入手できます。</p>
+    <div class="two">
+      <div>
+        <ul class="files">
+          <li><code>Sumiveil-Setup-&lt;版&gt;-x64.exe</code><span>インストーラー (現在のユーザーだけなら管理者権限は不要)</span></li>
+          <li><code>Sumiveil-&lt;版&gt;-portable-x64.zip</code><span>インストール不要のポータブル版</span></li>
+          <li><code>Sumiveil-&lt;版&gt;-morphology-dict.zip</code><span>形態素解析の辞書 (任意)</span></li>
+          <li><code>Sumiveil-&lt;版&gt;-UserGuide-ja.pdf</code><span>画面写真付きの利用ガイド</span></li>
+        </ul>
+        <p class="note">コード署名をしていないため、初回の起動時に Windows の警告 (SmartScreen) が出ることがあります。入手元が上のリンク (GitHub の Releases) であることを確かめてから、「詳細情報」→「実行」を選んでください。</p>
+      </div>
+      <figure class="shot">
+        <img src="guide/images/batch-search.png" width="1150" height="890" alt="一括処理の画面。フォルダ内のファイルから文字列を検索した結果が一覧で表示される。" loading="lazy">
+        <figcaption>フォルダ内のファイルをまとめて検索・マスクできます</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="about">
+  <div class="wrap">
+    <h2>このプロジェクトについて</h2>
+    <div class="two">
+      <div>
+        <p>Sumiveil は、個人の開発者 (sumiveil-dev) による小規模な趣味のプロジェクトです。返答や修正に時間がかかることがあります。開発には、Anthropic の AI コーディング支援ツール Claude Code を使っています。</p>
+        <p>不具合や要望は <a href="https://github.com/sumiveil-dev/Sumiveil/issues">GitHub の Issues</a> へお願いします。セキュリティの問題など公開で書きにくい内容は、リポジトリの「Security」タブから非公開で報告できます。Issues には、個人情報や機密情報を含む文章を貼らないでください。</p>
+      </div>
+      <div>
+        <p><a href="https://github.com/sumiveil-dev/Sumiveil/blob/main/PRIVACY.md">プライバシーポリシー</a>: Sumiveil も開発者も、利用者の情報を集めません。</p>
+        <p>ライセンス: MIT。使用しているライブラリのライセンスは、配布物の <code>THIRD-PARTY-NOTICES.txt</code> にあります。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="english" class="en" lang="en">
+  <div class="wrap">
+    <h2>English</h2>
+    <p>Sumiveil is a free, open-source Windows tool (GUI and command line) that detects personal and confidential data in text — names, email addresses, phone numbers, addresses, national ID numbers, API keys, passwords, and more — and replaces it with placeholders such as <code>&lt;NAME_1&gt;</code>. Use it to anonymize logs, emails, and chat transcripts before sharing them with AI services or other people.</p>
+    <ul>
+      <li>Runs fully offline. Your input is never sent anywhere, and there is no telemetry.</li>
+      <li>67 detectors you can turn on or off by category, plus your own keywords, allowlist, and regex rules.</li>
+      <li>Side-by-side review, batch processing of folders (text, email, Office files, PDF), a global hotkey, and a CLI for CI checks.</li>
+      <li>The user interface and the guide are mainly in Japanese; the GUI also has an English mode.</li>
+    </ul>
+    <p>Download the latest version from <a href="https://github.com/sumiveil-dev/Sumiveil/releases/latest">GitHub Releases</a>. Automatic detection is not perfect, so always review the result before sharing it. This is a small hobby project by one person, built with the help of Claude Code. Please report issues on <a href="https://github.com/sumiveil-dev/Sumiveil/issues">GitHub</a>.</p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a href="https://github.com/sumiveil-dev/Sumiveil">GitHub</a>
+      <a href="https://github.com/sumiveil-dev/Sumiveil/releases/latest">Releases</a>
+      <a href="https://github.com/sumiveil-dev/Sumiveil/blob/main/PRIVACY.md">プライバシーポリシー</a>
+      <a href="https://github.com/sumiveil-dev/Sumiveil/blob/main/LICENSE.txt">ライセンス (MIT)</a>
+    </div>
+    <p>このページは外部のフォント・解析ツール・広告を使っていません。</p>
+    <p>記載されている会社名・製品名・サービス名は、各社の商標または登録商標です。画面の例に写っている名前・番号・アドレスはすべて架空のものです。</p>
+    <p>© 2026 sumiveil-dev</p>
+  </div>
+</footer>
+</body>
+</html>
